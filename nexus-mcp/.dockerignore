@@ -22,6 +22,16 @@ env/
 # Ignore source control
 .git/
 .gitignore
+.dockerignore
+
+# Ignore deployment files
+Dockerfile
+docker-compose.yml
+
+# Ignore database migrations in final image (optional, depends on setup)
+# For this project, we might want migrations to run on startup if needed, 
+# but usually, we keep them out of the image if we handle them differently.
+# However, GEMINI.md says we use alembic upgrade head, so we should keep them.
 
 # Ignore documentation/dev-only files
 tests/
@@ -29,3 +39,6 @@ requirements-dev.txt
 GEMINI.md
 CHANGELOG.md
 README.md
+alembic.ini
+alembic/__pycache__/
+alembic/versions/__pycache__/

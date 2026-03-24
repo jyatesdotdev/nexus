@@ -9,8 +9,12 @@ ENV/
 env.bak/
 venv.bak/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
 .idea/
 .vscode/
 *.db
+alembic/__pycache__/
+alembic/versions/__pycache__/
