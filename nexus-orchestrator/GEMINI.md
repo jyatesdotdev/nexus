@@ -47,6 +47,13 @@ AGENT_MODEL=gemini-2.5-flash
 
 ## 📏 Development Conventions
 
+### Nexus Engineering Standards
+This project follows the **Nexus Engineering Standards**:
+- **Educational Integrity**: All architectural commentary must use the `# EDUCATIONAL NOTE:` prefix.
+- **Code Quality**: Enforce strict linting with Ruff and type safety with Mypy.
+- **Test Isolation**: Ensure all tests use mocking to avoid external API hits.
+- **Containerization**: Use multi-stage builds, non-root users, and native healthchecks.
+
 ### Agentic & Architectural Patterns
 - **Hierarchical Delegation:** The `root_agent` should remain a lightweight router. Logic for specific domains must be encapsulated in sub-agents.
 - **Adapter Pattern (`adapters/`)**: New foundation models must implement the `BaseLlm` interface and register themselves via `LLMRegistry`.

@@ -11,3 +11,5 @@ gunicorn
 pytest
 pytest-asyncio
 click
+ruff
+mypy

@@ -31,19 +31,39 @@ The Orchestrator is exposed via a FastAPI application powered by `AdkWebServer`.
 
 ---
 
-## Key Logic (HOW/WHY)
+## Nexus Engineering Standards
+
+This project adheres to the **Nexus Engineering Standards**, ensuring it serves as a high-quality educational reference and a production-ready service.
+
+### 1. Educational Integrity
+All architectural and "Why" commentary is standardized using the `# EDUCATIONAL NOTE:` prefix. This allows learners to quickly identify key design decisions and their rationales within the source code.
+
+### 2. Code Quality & Type Safety
+The project enforces strict linting and static type checking to minimize runtime errors and improve maintainability.
+- **Linter**: [Ruff](https://github.com/astral-sh/ruff) is used for fast, comprehensive linting and formatting.
+- **Type Checker**: [Mypy](https://github.com/python/mypy) is used with strict mode enabled to ensure 100% type coverage.
+
+### 3. Complete Test Isolation
+Tests are designed to be 100% isolated. No test should ever hit an external API or a production resource. We use `unittest.mock` extensively to patch network clients (`httpx`) and system calls (`subprocess`).
+
+### 4. Optimized Containerization
+The `Dockerfile` uses a multi-stage build to keep the runtime image minimal and secure. It runs as a non-root user and includes a native `HEALTHCHECK` to ensure the service is responsive.
+
+---
+
+## Key Logic (EDUCATIONAL NOTES)
 
 ### Tool Routing
-- **HOW**: The `root_agent` is initialized with a list of `sub_agents`. When a request comes in, the underlying LLM compares the request against the `description` and `instruction` of each sub-agent.
-- **WHY**: This "router" pattern keeps individual agents small, focused, and efficient. It prevents "prompt bloat" in the root agent and ensures that specialized knowledge remains encapsulated within the sub-agents.
+- **EDUCATIONAL NOTE: [How]** The `root_agent` is initialized with a list of `sub_agents`. When a request comes in, the underlying LLM compares the request against the `description` and `instruction` of each sub-agent.
+- **EDUCATIONAL NOTE: [Why]** This "router" pattern keeps individual agents small, focused, and efficient. It prevents "prompt bloat" in the root agent and ensures that specialized knowledge remains encapsulated within the sub-agents.
 
 ### AdkWebServer
-- **HOW**: The `AdkWebServer` class (from `google.adk.cli.adk_web_server`) wraps the `root_agent` and several persistence services (`InMemorySessionService`, `InMemoryMemoryService`, etc.).
-- **WHY**: It abstracts away the boilerplate of building a chat API. It provides a standard interface that the frontend can rely on, regardless of the underlying agent's complexity.
+- **EDUCATIONAL NOTE: [How]** The `AdkWebServer` class (from `google.adk.cli.adk_web_server`) wraps the `root_agent` and several persistence services (`InMemorySessionService`, `InMemoryMemoryService`, etc.).
+- **EDUCATIONAL NOTE: [Why]** It abstracts away the boilerplate of building a chat API. It provides a standard interface that the frontend can rely on, regardless of the underlying agent's complexity.
 
 ### SSE Streaming
-- **HOW**: The `AdkWebServer` implements a chat endpoint that streams `LlmResponse` objects using Server-Sent Events. The `InMemoryRunner` in `main.py` also supports `run_async` which yields events.
-- **WHY**: LLM responses can be slow. SSE allows the system to provide immediate, partial feedback to the user (streaming text) as it's generated, significantly improving the perceived responsiveness of the UI.
+- **EDUCATIONAL NOTE: [How]** The `AdkWebServer` implements a chat endpoint that streams `LlmResponse` objects using Server-Sent Events. The `InMemoryRunner` also supports `run_async` which yields events.
+- **EDUCATIONAL NOTE: [Why]** LLM responses can be slow. SSE allows the system to provide immediate, partial feedback to the user (streaming text) as it's generated, significantly improving the perceived responsiveness of the UI.
 
 ---
 

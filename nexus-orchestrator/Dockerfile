@@ -58,3 +58,4 @@ EXPOSE 8080
 # --bind 0.0.0.0:8080 allows external traffic
 # --workers 4 (Adjust based on CPU cores in production)
 CMD ["gunicorn", "orchestrator.app:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--access-logfile", "-", "--error-logfile", "-"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl --fail http://localhost:8080/health || exit 1
