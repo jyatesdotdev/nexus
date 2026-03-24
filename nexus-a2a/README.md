@@ -8,6 +8,16 @@ The A2A Weather Sub-Agent is a specialized microservice that:
 2.  **Provides Weather Data**: It can extract a city name from natural language input and fetch real-time weather conditions using the [wttr.in](https://wttr.in) public API.
 3.  **Streams Responses**: It uses asynchronous event queues to stream "thinking" messages and final results back to the caller.
 
+## 📏 Engineering Standards
+
+This project adheres strictly to **Educational Integrity** standards. This means:
+- Code is heavily commented with **`EDUCATIONAL NOTE`** blocks explaining *why* decisions were made.
+- We enforce strict **Code Quality** using Ruff, Mypy, and isolated virtual environments.
+- **Testing Strategy** ensures complete isolation; we never touch external APIs during test runs, relying on `respx` for robust mocking.
+- **Docker Deployment** follows best practices: using multi-stage builds, non-root users, strict `.dockerignore` files, and native healthchecks.
+
+For complete details, please see the `GEMINI.md` file.
+
 ## 🏗️ Core Architecture (HOW & WHY)
 
 ### 1. `AgentExecutor` (WeatherAgentExecutor)
@@ -47,11 +57,18 @@ docker compose up a2a-agent
 
 ### Manual Setup
 If you want to run it locally without Docker:
-1.  **Install Dependencies**:
+1.  **Set up environment & Install Dependencies**:
     ```bash
+    python3 -m venv venv && source venv/bin/activate
     pip install -r requirements.txt
     ```
-2.  **Start the Server**:
+2.  **Code Quality & Testing**:
+    ```bash
+    ruff check .
+    mypy server.py
+    pytest
+    ```
+3.  **Start the Server**:
     ```bash
     python server.py
     ```

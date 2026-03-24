@@ -10,7 +10,34 @@ The **A2A Weather Sub-Agent** is a standalone AI agent that complies with the **
 - **Language:** Python 3.14 (with `asyncio` and `httpx`).
 - **Protocol:** A2A SDK (v0.3.25+), supporting dynamic capability discovery via `AgentCard`.
 - **Server:** Starlette (via `A2AStarletteApplication`) and Uvicorn/Gunicorn.
+- **Code Quality:** Ruff (Linter & Formatter), Mypy (Type Checking).
+- **Testing:** Pytest and Respx.
+- **Containerization:** Optimized Multi-stage Docker.
 - **Integration:** Designed for discovery by a root orchestrator via JSON-RPC.
+
+## 📏 Engineering Standards & Guidelines
+
+These guidelines are strictly followed for all changes made to this project to ensure educational clarity, security, and production readiness.
+
+### 1. Educational Integrity
+- **Explanatory Comments:** Every architectural decision (e.g., why async, why a context manager) must be documented with inline "EDUCATIONAL NOTE" comments.
+- **Clarity over Cleverness:** Code should be idiomatic and clean, prioritizing readability for someone learning the stack.
+
+### 2. Code Quality & Formatting
+- **Ruff:** Use `ruff format .` and `ruff check --fix .` for consistent styling and linting.
+- **Typing:** Use Python 3.14 type hints comprehensively.
+- **Environment:** Always use a virtual environment (`venv`) for local development to isolate dependencies.
+
+### 3. Testing Strategy
+- **Isolation:** Tests must NEVER touch external production APIs.
+- **Mocking:** Use `respx` to mock external API requests (e.g., to `wttr.in`) during test runs.
+- **Validation:** Every new feature or bug fix must be accompanied by relevant Pytest cases in the `tests/` directory.
+
+### 4. Docker & Deployment
+- **Multi-Stage Builds:** Use a `builder` stage for dependencies and a `final` stage for execution to minimize image size.
+- **Security:** Always run as a non-root `appuser`.
+- **Optimization:** Use `.dockerignore` to keep the build context small and prevent secrets/caches from leaking into images.
+- **Healthchecks:** Include a native healthcheck (e.g., `curl` to the discovery card) to monitor server availability.
 
 ## 🏗️ Architecture
 
@@ -33,6 +60,7 @@ make logs        # Tails logs from the container
 To run the agent locally without Docker:
 1.  **Install Dependencies**:
     ```bash
+    python3 -m venv venv && source venv/bin/activate
     pip install -r requirements.txt
     ```
 2.  **Start the Server**:
@@ -47,19 +75,6 @@ To run the agent locally without Docker:
 | `A2A_HOST` | Interface to bind to. | `0.0.0.0` |
 | `A2A_PORT` | Port to listen on. | `8001` |
 | `A2A_PUBLIC_URL`| Discovery URL for the orchestrator. | `http://a2a-agent:8001` |
-
-## 📏 Development Conventions
-
-### A2A Protocol Compliance
-- **Streaming:** The agent MUST stream its progress. Use `event_queue.enqueue_event()` to send intermediate "thinking" messages and final results.
-- **Task Lifecycle:** Always signal completion by enqueuing a `TaskStatusUpdateEvent` with `state=TaskState.completed`.
-- **Discovery:** Ensure the `AgentCard` in `server.py` is updated when new skills or capabilities are added.
-
-### Python Standards
-- **AsyncIO:** Use `async`/`await` for all I/O operations (HTTP requests, event enqueuing).
-- **Type Hints:** Mandatory for all functions and classes to ensure maintainability.
-- **Docstrings:** **CRITICAL**. AI agents use docstrings to understand tool purpose and arguments. Provide clear, descriptive docstrings for all public methods.
-- **Error Handling:** Gracefully handle API failures (e.g., `wttr.in` timeouts) by returning informative error messages rather than crashing.
 
 ## 📁 Key Files
 - `server.py`: The entry point containing the `WeatherAgentExecutor`, `AgentCard`, and Starlette app configuration.

@@ -4,3 +4,8 @@ starlette
 sse-starlette
 httpx
 gunicorn
+ruff
+mypy
+pytest
+pytest-asyncio
+respx
