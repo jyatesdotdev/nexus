@@ -33,6 +33,29 @@ from a2a.types import (
 # 1. A2A Agent Executor
 # ==========================================
 
+def extract_city(user_message: str) -> str:
+    """
+    Extracts the city name from a given natural language user message.
+
+    Args:
+        user_message (str): The text input from the user.
+
+    Returns:
+        str: The extracted city name as a string, or 'London' as a fallback.
+    """
+    city = "London"
+    words = user_message.split()
+    if "in" in words:
+        try:
+            idx = words.index("in")
+            city = " ".join(words[idx + 1:]).strip("?")
+        except IndexError:
+            pass
+    elif len(words) > 0 and not any(w in user_message.lower() for w in ["what", "how", "weather", "forecast"]):
+        city = user_message.strip("?")
+    return city
+
+
 # INHERITANCE: WeatherAgentExecutor inherits from AgentExecutor.
 # WHY: This ensures our class implements the required interface ('execute' and 'cancel' methods)
 # so it can be used by the A2A SDK's request handlers.
@@ -46,24 +69,16 @@ class WeatherAgentExecutor(AgentExecutor):
     # (like the network request to wttr.in).
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """
-        Processes an incoming A2A request.
+        Processes an incoming A2A request by fetching weather data.
+        
+        Args:
+            context (RequestContext): The A2A request context containing the user's input.
+            event_queue (EventQueue): The queue to which A2A events are sent.
         """
         user_message = context.get_user_input()
         print(f"A2A Sub-Agent received: {user_message}")
         
-        # Simple extraction logic (in a real app, use an LLM or NLP library to extract the city)
-        city = "London" # Default
-        words = user_message.split()
-        if "in" in words:
-            try:
-                idx = words.index("in")
-                city = words[idx + 1].strip("?")
-            except IndexError:
-                pass
-        elif len(words) > 0 and not any(w in user_message.lower() for w in ["what", "how", "weather", "forecast"]):
-            # If the user just typed a city name
-            city = user_message.strip("?")
-
+        city = extract_city(user_message)
         response_text = "I am a specialized Weather Agent. Let me check that for you..."
 
         try:
@@ -84,18 +99,22 @@ class WeatherAgentExecutor(AgentExecutor):
                 # Use wttr.in for a simple, no-auth public API
                 resp = await client.get(f"https://wttr.in/{city}?format=j1")
                 if resp.status_code == 200:
-                    data = resp.json()
-                    current = data['current_condition'][0]
-                    temp_f = current['temp_F']
-                    temp_c = current['temp_C']
-                    desc = current['weatherDesc'][0]['value']
-                    
-                    response_text = f"The current weather in **{city}** is {desc} with a temperature of {temp_f}°F ({temp_c}°C)."
+                    try:
+                        data = resp.json()
+                        current = data['current_condition'][0]
+                        temp_f = current['temp_F']
+                        temp_c = current['temp_C']
+                        desc = current['weatherDesc'][0]['value']
+                        response_text = f"The current weather in **{city}** is {desc} with a temperature of {temp_f}°F ({temp_c}°C)."
+                    except (KeyError, IndexError, ValueError):
+                        response_text = f"Could not parse weather data for {city}. The service returned an unexpected format."
                 else:
                     response_text = f"Could not retrieve weather for {city}. The service returned status {resp.status_code}."
+        except httpx.RequestError as req_err:
+            response_text = f"A network error occurred while fetching the weather: {req_err}"
         except Exception as e:
             # ERROR HANDLING: Catching exceptions prevents the whole server from crashing.
-            response_text = f"An error occurred while fetching the weather: {e}"
+            response_text = f"An unexpected error occurred while processing the request: {e}"
 
         # Construct the final A2A-compliant message
         response = Message(
