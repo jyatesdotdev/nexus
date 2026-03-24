@@ -81,19 +81,19 @@ pip install -r requirements.txt
 
 ### CLI Mode (One-off Prompt)
 ```bash
-python main.py "How's the weather in London and what's the system uptime?"
+python main.py chat "How's the weather in London and what's the system uptime?"
 ```
 
 ### Interactive CLI Mode
 ```bash
-python main.py
+python main.py chat
 ```
 
 ### Server Mode (for Frontend Integration)
 ```bash
-python server.py
+python main.py serve
 ```
-The server will start on `http://0.0.0.0:8080` (configurable via `PORT` environment variable).
+The server will start on `http://0.0.0.0:8080` (configurable via `--port` option).
 
 ### Health Checks
 You can check the real-time status of the Orchestrator and its distributed sub-agents by visiting:
