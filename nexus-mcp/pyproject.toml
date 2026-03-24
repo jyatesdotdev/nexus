@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+extend-select = [
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "S",   # bandit
+    "PTH", # use pathlib
+    "TRY", # tryceratops
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+pythonpath = "."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]

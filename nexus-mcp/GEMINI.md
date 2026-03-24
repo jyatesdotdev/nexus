@@ -4,28 +4,58 @@ This document provides foundational context and instructional guidance for the M
 
 ## 🚀 Project Overview
 
-The **MCP HR Directory Server** is a specialized capability provider within an agentic architecture. It implements the **Model Context Protocol (MCP)** to expose a secure interface to a corporate HR database (SQLite) for LLM-based orchestrators.
+The **MCP HR Directory Server** is a specialized capability provider within an agentic architecture. It implements the **Model Context Protocol (MCP)** to expose a secure interface to a corporate HR database for LLM-based orchestrators.
 
 ### Key Technologies
 - **Framework:** [FastMCP](https://modelcontextprotocol.io/) (Python SDK).
 - **Runtime:** Python 3.14.
-- **Database:** SQLite (local `hr.db`).
-- **Transport:** SSE (Server-Sent Events) via Starlette/Uvicorn.
-- **Containerization:** Docker (running as a non-root `appuser`).
+- **ORM:** [SQLModel](https://sqlmodel.tiangolo.com/) (Pydantic + SQLAlchemy).
+- **Migrations:** [Alembic](https://alembic.sqlalchemy.org/).
+- **Database:** SQLite (local `hr.db`) or External (via `DATABASE_URL`).
+- **Code Quality:** Ruff (Linter & Formatter), Mypy (Type Checking).
+- **Testing:** Pytest.
+- **Containerization:** Optimized Multi-stage Docker.
+
+## 📏 Engineering Standards & Guidelines
+
+These guidelines are strictly followed for all changes made to this project to ensure educational clarity, security, and production readiness.
+
+### 1. Educational Integrity
+- **Explanatory Comments:** Every architectural decision (e.g., why SQLModel, why Alembic) must be documented with inline "EDUCATIONAL NOTE" comments.
+- **Clarity over Cleverness:** Code should be idiomatic and clean, prioritizing readability for someone learning the stack.
+
+### 2. Database & Persistence
+- **ORM-First:** Use **SQLModel** for all database interactions. Raw SQL should be avoided to ensure type safety and Pydantic integration.
+- **Migrations:** Never use `create_all` for production schema changes. Always generate and apply **Alembic** migrations.
+- **Externalization:** Support external databases by using the `DATABASE_URL` environment variable.
+- **Security:** Use ORM abstractions or parameterized queries to prevent SQL Injection.
+
+### 3. Code Quality & Formatting
+- **Ruff:** Use `ruff format .` and `ruff check --fix .` for consistent styling and linting.
+- **Typing:** Use Python 3.14 type hints comprehensively.
+- **Environment:** Always use a virtual environment (`venv`) for local development to isolate dependencies.
+
+### 4. Testing Strategy
+- **Isolation:** Tests must NEVER touch the local `hr.db` or external production databases.
+- **Mocking:** Use `unittest.mock` or environment injection to redirect database engines to an in-memory or temporary SQLite database during test runs.
+- **Validation:** Every new feature or bug fix must be accompanied by relevant Pytest cases in the `tests/` directory.
+
+### 5. Docker & Deployment
+- **Multi-Stage Builds:** Use a `builder` stage for dependencies and a `final` stage for execution to minimize image size.
+- **Security:** Always run as a non-root `appuser`.
+- **Optimization:** Use `.dockerignore` to keep the build context small and prevent secrets/caches from leaking into images.
+- **Healthchecks:** Include a native healthcheck (e.g., Python socket check) to monitor server availability.
 
 ## 🏗️ Architecture & Components
 
-The server acts as a **Capability Provider**, offering specific "skills" (tools) and "knowledge" (resources) to an agent or orchestrator.
-
 ### Tools
 - **`search_directory(department: str = None, name: str = None)`**: 
-  - **Purpose:** Queries the HR database for employee records.
-  - **Logic:** Supports filtering by department or partial name match.
-  - **Security:** Uses parameterized queries to prevent SQL injection.
+  - **Purpose:** Queries the HR database using SQLModel for employee records.
+  - **Logic:** Supports dynamic filtering and partial name matching via `.contains()`.
 
 ### Resources
 - **`system://status`**: 
-  - **Purpose:** A static resource providing the server's operational health and database connection status.
+  - **Purpose:** A static resource providing the server's operational health.
 
 ## 🛠️ Building and Running
 
@@ -36,38 +66,28 @@ The server acts as a **Capability Provider**, offering specific "skills" (tools)
    ```
 2. **Run the container:**
    ```bash
-   docker run -p 8000:8000 mcp-hr-server
+   docker run -e DATABASE_URL="sqlite:///hr.db" -p 8000:8000 mcp-hr-server
    ```
-   The server listens on `http://0.0.0.0:8000`.
 
 ### Manual Execution
-1. **Install dependencies:**
+1. **Set up environment:**
    ```bash
+   python3 -m venv venv && source venv/bin/activate
    pip install -r requirements.txt
    ```
-2. **Start the server:**
+2. **Apply migrations:**
+   ```bash
+   alembic upgrade head
+   ```
+3. **Start the server:**
    ```bash
    python server.py
    ```
 
-## 📏 Development Conventions
-
-### MCP Implementation
-- **Tool Definitions:** Use the `@mcp.tool()` decorator. Ensure docstrings are descriptive and include type hints, as they are used by LLMs to understand the tool's purpose and arguments.
-- **Resource Definitions:** Use the `@mcp.resource(uri)` decorator for static or semi-static data.
-- **Transport:** Defaults to `sse` for web-compatible asynchronous communication.
-
-### Database Patterns
-- **Connection Management:** Use the `get_db()` context manager (defined in `server.py`) to ensure connections are properly closed.
-- **Initialization:** The `init_db()` function handles schema creation and mock data population on startup if `hr.db` does not exist.
-- **Security:** Always use parameterized queries (`?` placeholders) for SQL execution.
-
-### Docker Standards
-- **Security:** The `Dockerfile` creates a non-root `appuser` and changes ownership of the `/app` directory before execution.
-- **Base Image:** Uses `python:3.14-slim` for a minimal footprint.
-
 ## 📁 Key Files
-- `server.py`: The main entry point containing MCP tool/resource definitions and database logic.
-- `hr.db`: The SQLite database file (created dynamically if missing).
-- `requirements.txt`: Project dependencies (`mcp[sse]`, `uvicorn`, `starlette`).
-- `Dockerfile`: Containerization configuration.
+- `server.py`: MCP tool/resource definitions and server entry point.
+- `database.py`: SQLModel models, engine configuration, and initialization logic.
+- `alembic/`: Database migration scripts.
+- `tests/`: Automated test suite.
+- `Dockerfile`: Optimized multi-stage container configuration.
+- `requirements.txt`: Project dependencies.

@@ -1,0 +1,31 @@
+# Ignore virtual environments
+venv/
+.venv/
+env/
+
+# Ignore Python bytecode
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore development tools/cache
+.pytest_cache/
+.ruff_cache/
+.coverage
+.tox/
+.mypy_cache/
+
+# Ignore local database files
+*.db
+*.sqlite3
+
+# Ignore source control
+.git/
+.gitignore
+
+# Ignore documentation/dev-only files
+tests/
+requirements-dev.txt
+GEMINI.md
+CHANGELOG.md
+README.md
