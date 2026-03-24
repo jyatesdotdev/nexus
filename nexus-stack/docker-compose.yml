@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    restart: unless-stopped
+    build:
+      context: ../nexus-directory
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../nexus-directory:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-I", "http://localhost:8000/sse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  a2a-agent:
+    restart: unless-stopped
+    build:
+      context: ../nexus-weather
+    ports:
+      - "8001:8001"
+    volumes:
+      - ../nexus-weather:/app
+    environment:
+      - A2A_HOST=0.0.0.0
+      - A2A_PORT=8001
+      - A2A_PUBLIC_URL=http://a2a-agent:8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/.well-known/agent-card.json"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  orchestrator:
+    restart: unless-stopped
+    build:
+      context: ../nexus-core
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../nexus-core:/app
+      - ../nexus-integration:/e2e_tests
+    stdin_open: true # Allows interactive input
+    tty: true       # Allows interactive input
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+      a2a-agent:
+        condition: service_healthy
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MCP_SERVER_URL=http://mcp-server:8000/sse
+      - A2A_AGENT_URL=http://a2a-agent:8001/.well-known/agent-card.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ../nexus-ui
+    ports:
+      - "5173:80"
+    depends_on:
+      orchestrator:
+        condition: service_healthy

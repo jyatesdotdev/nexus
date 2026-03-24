@@ -1,0 +1,5 @@
+google-adk==1.18.0
+a2a==0.44
+pydantic
+pytest
+pytest-asyncio
