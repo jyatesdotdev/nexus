@@ -12,11 +12,11 @@ import '@testing-library/jest-dom'
 describe('SystemStatusGrid', () => {
   // Mock data representing the props we'll pass to our component.
   const mockStatus = {
-    orchestrator: 'Online',
-    mcp_server: 'Online',
-    mcp_db: 'Online',
-    a2a_agent: 'Online',
-    a2a_api: 'Online'
+    orchestrator: 'Online' as const,
+    mcp_server: 'Online' as const,
+    mcp_db: 'Connected' as const,
+    a2a_agent: 'Online' as const,
+    a2a_api: 'Reachable' as const
   }
 
   it('renders all services and their subStatus', () => {
@@ -43,18 +43,19 @@ describe('SystemStatusGrid', () => {
     
     // Check if the subStatus values are correct
     // `getAllByText` returns an array of all matching elements.
-    const statusValues = screen.getAllByText('Online')
-    // 3 main + 2 subStatus = 5 'Online' badges/texts
-    expect(statusValues.length).toBe(5)
+    const onlineValues = screen.getAllByText('Online')
+    expect(onlineValues.length).toBe(3)
+    expect(screen.getByText('Connected')).toBeInTheDocument()
+    expect(screen.getByText('Reachable')).toBeInTheDocument()
   })
 
   it('renders correctly when offline', () => {
     const offlineStatus = {
-      orchestrator: 'Offline',
-      mcp_server: 'Offline',
-      mcp_db: 'Offline',
-      a2a_agent: 'Offline',
-      a2a_api: 'Offline'
+      orchestrator: 'Offline' as const,
+      mcp_server: 'Offline' as const,
+      mcp_db: 'Offline' as const,
+      a2a_agent: 'Offline' as const,
+      a2a_api: 'Offline' as const
     }
     render(<SystemStatusGrid status={offlineStatus} />)
     
