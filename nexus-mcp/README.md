@@ -1,64 +1,90 @@
-# MCP HR Directory Server
+# Nexus HR Directory (MCP)
 
-This project implements a Model Context Protocol (MCP) server that provides a secure interface to a corporate HR directory. It allows LLMs (Large Language Models) to query employee information stored in a local SQLite database through well-defined tools and resources.
+The **Nexus HR Directory** is a specialized capability provider within an agentic architecture. It implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to expose a secure interface to a corporate HR database for LLM-based orchestrators.
 
-## What it does
+## 🚀 Overview
 
-The HR Directory Server exposes a single tool, `search_directory`, which allows for searching employees by department or name. It also provides a static resource `system://status` to report the server's health.
+This server allows LLMs (Large Language Models) to query employee information stored in a local or external database through well-defined tools and resources. It is built with a focus on security, type safety, and educational clarity.
 
 - **Tools:**
-  - `search_directory(department, name)`: Query the HR database for employee records including name, department, and email.
+  - `search_directory(department, name)`: Query the HR database for employee records including name, department, and email. Supports partial name matching.
 - **Resources:**
-  - `system://status`: A static resource that confirms the server's operational status and database connection.
+  - `system://status`: A static resource that confirms the server's operational status and database connectivity.
 
-## How it works
+## 🛠️ Key Technologies
 
-The server is built using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) Python SDK, specifically the `FastMCP` framework.
+- **Framework:** [FastMCP](https://modelcontextprotocol.io/) (Python SDK) - High-level framework for building MCP servers.
+- **ORM:** [SQLModel](https://sqlmodel.tiangolo.com/) - Pydantic + SQLAlchemy for type-safe database interactions.
+- **Migrations:** [Alembic](https://alembic.sqlalchemy.org/) - Robust database schema management.
+- **Database:** SQLite (local `hr.db`) or External (via `DATABASE_URL`).
+- **Code Quality:** [Ruff](https://beta.ruff.rs/docs/) (Linter & Formatter), [Mypy](https://mypy.readthedocs.io/) (Type Checking).
+- **Testing:** [Pytest](https://docs.pytest.org/).
+- **Containerization:** Optimized Multi-stage Docker.
 
-1.  **Database:** Upon startup, the server initializes a local SQLite database (`hr.db`) and populates it with mock employee data if it doesn't already exist.
-2.  **MCP Implementation:** The server uses the `FastMCP` library to define tools and resources.
-3.  **Transport:** It uses the **SSE (Server-Sent Events)** transport layer, which allows for asynchronous, unidirectional communication from the server to the client.
-4.  **Security:** The server runs in a Docker container as a non-root user, ensuring a secure and isolated environment.
+## ⚙️ How It Works
 
-### HOW/WHY Documentation
+1.  **Transport:** Uses **SSE (Server-Sent Events)** for asynchronous communication.
+2.  **Database:** Upon startup, the server initializes the database. While `create_all` is used for rapid prototyping, production environments should rely on **Alembic** migrations.
+3.  **Security:** 
+    - ORM abstractions eliminate SQL injection risks.
+    - Database credentials are externalized via environment variables.
+    - Docker container runs as a non-root user.
 
-*   **HOW:** We use the `@mcp.tool()` decorator to expose Python functions directly as tools that an LLM can invoke.
-*   **WHY:** This approach decouples the LLM from the underlying data source. The LLM doesn't need to know how to write SQL or have direct network access to the database; it simply calls the `search_directory` tool, and the MCP server handles the secure execution of the query.
-*   **HOW:** We use the `@mcp.resource()` decorator to expose static or semi-static data as URIs.
-*   **WHY:** Resources provide a way for agents to "read" data from the server, similar to how they might read a file or an API endpoint, but within the structured context of the MCP protocol.
-
-## How to run it
+## 🏃 Getting Started
 
 ### Using Docker (Recommended)
 
-To build and run the HR Directory Server using Docker:
-
 1.  **Build the image:**
     ```bash
-    docker build -t mcp-hr-server .
+    docker build -t nexus-hr-directory .
     ```
 2.  **Run the container:**
     ```bash
-    docker run -p 8000:8000 mcp-hr-server
+    docker run -e DATABASE_URL="sqlite:///hr.db" -p 8000:8000 nexus-hr-directory
     ```
-    The server will be available at `http://localhost:8000`.
 
-### Manual Run
+### Manual Execution
 
-To run the server locally without Docker:
-
-1.  **Install dependencies:**
+1.  **Set up environment:**
     ```bash
+    python3 -m venv venv && source venv/bin/activate
     pip install -r requirements.txt
     ```
-2.  **Start the server:**
+2.  **Apply migrations:**
+    ```bash
+    alembic upgrade head
+    ```
+3.  **Start the server:**
     ```bash
     python server.py
     ```
 
-## Role as an MCP Server
+## 🧪 Development & Quality
 
-In an agentic architecture, this server acts as a **Capability Provider**. It doesn't have any autonomous logic itself; instead, it provides specific "skills" (tools) and "knowledge" (resources) to an orchestrator or an agent. This modularity allows for:
-- **Separation of Concerns:** The HR server only cares about HR data and SQLite queries.
-- **Security:** Sensitive database credentials never leave the MCP server.
-- **Reusability:** Any MCP-compliant client can connect to and use this HR directory.
+### Linting & Formatting
+We use **Ruff** for fast linting and formatting:
+```bash
+ruff format .
+ruff check --fix .
+```
+
+### Type Checking
+Ensure type safety with **Mypy**:
+```bash
+mypy .
+```
+
+### Running Tests
+Execute the test suite using **Pytest**:
+```bash
+pytest
+```
+
+## 📂 Project Structure
+
+- `server.py`: MCP tool/resource definitions and server entry point.
+- `database.py`: SQLModel models and database configuration.
+- `alembic/`: Database migration scripts.
+- `tests/`: Automated test suite.
+- `Dockerfile`: Optimized multi-stage container configuration.
+- `GEMINI.md`: Foundational context and engineering standards.
