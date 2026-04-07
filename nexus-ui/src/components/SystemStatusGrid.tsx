@@ -25,7 +25,7 @@ export function SystemStatusGrid({ status }: SystemStatusProps) {
   const services = [
     { 
       id: 'orchestrator', 
-      label: 'Orchestrator', 
+      label: 'Nexus Core', 
       port: '8080',
       subStatus: null
     },
@@ -46,7 +46,7 @@ export function SystemStatusGrid({ status }: SystemStatusProps) {
   return (
     <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {services.map((s) => (
-        <Card key={s.label} className="p-5 flex flex-col justify-between bg-white dark:bg-neutral-900/50 gap-4 hover:shadow-md transition-all">
+        <Card key={s.label} className="p-5 flex flex-col justify-between [background:rgba(30,41,59,0.9)] gap-4 hover:shadow-indigo-500/10 hover:shadow-lg transition-all cursor-default">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-black mb-1.5">{s.label}</p>

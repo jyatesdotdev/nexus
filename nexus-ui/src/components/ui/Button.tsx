@@ -20,7 +20,7 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const variants = {
-    primary: "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-950 hover:scale-[1.02] active:scale-[0.98] shadow-md",
+    primary: "bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-indigo-500/30 border-none",
     ghost: "bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 shadow-sm"
   }
 

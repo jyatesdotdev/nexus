@@ -21,10 +21,22 @@ export interface Message {
   text: string
 
   /**
+   * Optional structured data for Generative UI components.
+   * This allows the UI to render bespoke components (e.g., a WeatherWidget)
+   * instead of plain text if a payload is provided.
+   */
+  data?: any
+
+  /**
    * The '?' makes this property optional.
    * Not every message needs an explicit author (e.g., system messages).
    */
   author?: string
+  
+  /**
+   * Optional ID for pending actions requiring user confirmation.
+   */
+  actionId?: string
 }
 
 /**

@@ -13,7 +13,7 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ status, sessionId }: ChatHeaderProps) {
   return (
-    <div className="p-5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center justify-between backdrop-blur-md">
+    <div className="p-5 border-b border-slate-700/50 [background:rgba(15,23,42,0.8)] flex items-center justify-between backdrop-blur-md">
       <h3 className="font-bold flex items-center gap-3 text-lg">
         {/* 
           Template Literals (` `): 
@@ -29,7 +29,7 @@ export function ChatHeader({ status, sessionId }: ChatHeaderProps) {
         Curly braces {} are used to embed JavaScript expressions 
         directly into our JSX (HTML-like) code. 
       */}
-      <span className="text-xs text-neutral-400 font-mono bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded">
+      <span className="text-xs text-slate-400 font-mono [background:rgb(30,41,59)] px-2 py-1 rounded">
         {sessionId}
       </span>
     </div>

@@ -32,7 +32,7 @@ describe('SystemStatusGrid', () => {
     // `screen.getByText` searches the virtual DOM for an element containing exact text.
     // If it doesn't find it, the test will fail immediately.
     // Main services
-    expect(screen.getByText('Orchestrator')).toBeInTheDocument()
+    expect(screen.getByText('Nexus Core')).toBeInTheDocument()
     expect(screen.getByText('MCP Server')).toBeInTheDocument()
     expect(screen.getByText('A2A Agent')).toBeInTheDocument()
 

@@ -31,7 +31,7 @@ export function MessageInput({ input, setInput, isLoading, isOffline, handleSend
      * onSubmit: Using a form with an onSubmit handler is better than just a button click.
      * It allows the user to press 'Enter' to send the message.
      */
-    <form onSubmit={handleSend} className="p-5 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+    <form onSubmit={handleSend} className="p-5 border-t border-slate-700/50 [background:rgba(15,23,42,0.9)]">
       <div className="flex gap-3">
         {/* 
           Controlled Component: 
@@ -41,7 +41,7 @@ export function MessageInput({ input, setInput, isLoading, isOffline, handleSend
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={!isOffline ? "Message orchestrator..." : "Orchestrator is offline"}
+          placeholder={!isOffline ? "Message Nexus..." : "Nexus is offline"}
           disabled={isLoading || isOffline}
         />
         <Button

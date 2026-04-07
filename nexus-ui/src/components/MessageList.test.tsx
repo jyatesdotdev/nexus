@@ -6,6 +6,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageList } from './MessageList'
+import type { Message } from '../types'
 import '@testing-library/jest-dom'
 import { createRef } from 'react'
 
@@ -50,7 +51,7 @@ describe('MessageList', () => {
 
     render(
       <MessageList 
-        messages={messages as any} 
+        messages={messages as Message[]} 
         messagesEndRef={messagesEndRef} 
         setInput={setInputMock} 
       />
@@ -76,7 +77,7 @@ describe('MessageList', () => {
 
     render(
       <MessageList 
-        messages={messages as any} 
+        messages={messages as Message[]} 
         messagesEndRef={messagesEndRef} 
         setInput={setInputMock} 
       />

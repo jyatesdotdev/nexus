@@ -14,7 +14,7 @@ describe('MessageInput Component', () => {
 
   it('renders correctly', () => {
     render(<MessageInput {...defaultProps} />)
-    expect(screen.getByPlaceholderText('Message orchestrator...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Message Nexus...')).toBeInTheDocument()
     const button = screen.getByRole('button', { name: /send/i })
     expect(button).toBeInTheDocument()
     // Button is disabled because input is empty
@@ -23,7 +23,7 @@ describe('MessageInput Component', () => {
 
   it('updates input value on typing', () => {
     render(<MessageInput {...defaultProps} />)
-    const inputEl = screen.getByPlaceholderText('Message orchestrator...')
+    const inputEl = screen.getByPlaceholderText('Message Nexus...')
     fireEvent.change(inputEl, { target: { value: 'Hello' } })
     expect(defaultProps.setInput).toHaveBeenCalledWith('Hello')
   })
@@ -42,7 +42,7 @@ describe('MessageInput Component', () => {
 
   it('disables input and button when isLoading is true', () => {
     render(<MessageInput {...defaultProps} input="Hello" isLoading={true} />)
-    const inputEl = screen.getByPlaceholderText('Message orchestrator...')
+    const inputEl = screen.getByPlaceholderText('Message Nexus...')
     const button = screen.getByRole('button')
     
     expect(inputEl).toBeDisabled()
@@ -51,7 +51,7 @@ describe('MessageInput Component', () => {
 
   it('shows offline state and disables inputs when isOffline is true', () => {
     render(<MessageInput {...defaultProps} isOffline={true} />)
-    const inputEl = screen.getByPlaceholderText('Orchestrator is offline')
+    const inputEl = screen.getByPlaceholderText('Nexus is offline')
     const button = screen.getByRole('button', { name: /send/i })
     
     expect(inputEl).toBeInTheDocument()

@@ -6,13 +6,13 @@ import { cn } from '../../lib/utils'
  * WHY: Standardizes input styling across the app.
  * HOW: Wraps a native input, providing a default neutral theme that matches the app's aesthetic.
  */
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 export function Input({ className, ...props }: InputProps) {
   return (
     <input
       className={cn(
-        "flex-grow bg-neutral-100 dark:bg-neutral-800 border-2 border-transparent focus:border-neutral-200 dark:focus:border-neutral-700 rounded-xl px-5 py-3 focus:ring-0 outline-none transition-all placeholder:text-neutral-400 font-medium disabled:opacity-50",
+        "flex-grow [background:rgb(30,41,59)] border-2 border-transparent focus:border-indigo-500/50 rounded-xl px-5 py-3 focus:ring-0 outline-none transition-all placeholder:text-slate-500 text-slate-100 font-medium disabled:opacity-50",
         className
       )}
       {...props}
