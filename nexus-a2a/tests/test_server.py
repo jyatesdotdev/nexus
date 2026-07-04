@@ -13,7 +13,20 @@ def test_extract_city():
     assert extract_city("Weather in Tokyo") == "Tokyo"
     assert extract_city("weather in New York?") == "New York"
     assert extract_city("Paris") == "Paris"
-    assert extract_city("What is the forecast?") == "London"
+    # Trailing time words ride along with a real place and are stripped.
+    assert extract_city("What is the weather like in Tokyo today?") == "Tokyo"
+
+
+def test_extract_city_returns_none_without_confident_location():
+    # EDUCATIONAL NOTE: the old heuristic guessed "London" for question-shaped
+    # messages and grabbed whatever followed "in" — including non-places
+    # leaked from earlier conversation topics by the delegating orchestrator
+    # (the "weather in the engineering department" incident). No confident
+    # location now means None, and the executor asks for clarification.
+    assert extract_city("What is the forecast?") is None
+    assert extract_city("What's the weather like?") is None
+    assert extract_city("What's the weather in the engineering department?") is None
+    assert extract_city("How is the weather in the meeting room") is None
 
 
 @pytest.fixture
@@ -38,7 +51,14 @@ async def test_weather_agent_success(mock_context, mock_event_queue):
     mock_response = {
         "current_condition": [
             {"temp_F": "68", "temp_C": "20", "weatherDesc": [{"value": "Sunny"}]}
-        ]
+        ],
+        # Resolution matches the request -> the sanity check passes.
+        "nearest_area": [
+            {
+                "areaName": [{"value": "Berlin"}],
+                "country": [{"value": "Germany"}],
+            }
+        ],
     }
 
     respx.get("https://wttr.in/Berlin?format=j1").respond(
@@ -67,6 +87,74 @@ async def test_weather_agent_success(mock_context, mock_event_queue):
         "The current weather in **Berlin** is Sunny with a temperature of 68°F (20°C)."
         in result_event.status.message.parts[0].root.text
     )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_weather_agent_no_location_asks_for_clarification(
+    mock_context, mock_event_queue
+):
+    """No confident location -> clarification, no wttr.in call, no guessing."""
+    mock_context.get_user_input.return_value = "What's the weather like?"
+
+    executor = WeatherAgentExecutor()
+    await executor.execute(mock_context, mock_event_queue)
+
+    # The two-phase streaming contract holds even on the clarification path.
+    assert mock_event_queue.enqueue_event.call_count == 2
+    assert len(respx.calls) == 0  # never fetched anything
+
+    thinking_event = mock_event_queue.enqueue_event.call_args_list[0][0][0]
+    assert isinstance(thinking_event, TaskStatusUpdateEvent)
+    assert thinking_event.final is False
+
+    result_event = mock_event_queue.enqueue_event.call_args_list[1][0][0]
+    assert result_event.final is True
+    text = result_event.status.message.parts[0].root.text
+    assert "couldn't identify a specific location" in text
+    assert "Which city or place" in text
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_weather_agent_unrelated_resolution_asks_for_clarification(
+    mock_context, mock_event_queue
+):
+    """wttr.in fuzzy-geocodes a nonsense candidate -> clarification, not weather."""
+    mock_context.get_user_input.return_value = "Weather in Fooville"
+
+    # wttr.in never 404s a fuzzy string; it resolves to SOME nearest area.
+    mock_response = {
+        "current_condition": [
+            {
+                "temp_F": "81",
+                "temp_C": "27",
+                "weatherDesc": [{"value": "Partly cloudy"}],
+            }
+        ],
+        "nearest_area": [
+            {
+                "areaName": [{"value": "Buenos Aires"}],
+                "region": [{"value": "Distrito Federal"}],
+                "country": [{"value": "Argentina"}],
+            }
+        ],
+    }
+    respx.get("https://wttr.in/Fooville?format=j1").respond(
+        status_code=200, json=mock_response
+    )
+
+    executor = WeatherAgentExecutor()
+    await executor.execute(mock_context, mock_event_queue)
+
+    assert mock_event_queue.enqueue_event.call_count == 2
+    result_event = mock_event_queue.enqueue_event.call_args_list[1][0][0]
+    assert result_event.final is True
+    text = result_event.status.message.parts[0].root.text
+    assert 'couldn\'t confidently resolve "Fooville"' in text
+    assert "Partly cloudy" not in text  # the fuzzy result is never reported
+    # No structured weather payload rides on a clarification.
+    assert not (result_event.status.message.metadata or {})
 
 
 @pytest.mark.asyncio

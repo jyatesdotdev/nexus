@@ -34,30 +34,176 @@ from a2a.types import (
 # ==========================================
 
 
-def extract_city(user_message: str) -> str:
+# EDUCATIONAL NOTE: Why Naive Extraction Fails in a Multi-Agent Context
+# [Why] This agent rarely sees what the human literally typed: it sees a
+# message COMPOSED BY ANOTHER LLM (the root orchestrator), which may splice
+# earlier conversation topics into the delegated text. A real incident: after
+# an HR question about "the engineering department", the user asked "What's
+# the weather like?" with no location; the orchestrator's delegated message
+# contained "in the engineering department", the old "grab the words after
+# 'in'" heuristic latched onto it, and wttr.in fuzzy-geocoded that nonsense
+# string into a confident (and wrong) forecast. The fix is NOT smarter NLP —
+# it is refusing to guess: when no confident location is present, return None
+# and let the executor ask for clarification instead of inventing one.
+
+# Tokens that signal the "in ..." clause is about org structure, people, or
+# time — not geography. Deliberately small and readable: false negatives just
+# produce a polite clarification question, which is the safe failure mode.
+_NON_PLACE_WORDS = frozenset(
+    {
+        "department",
+        "team",
+        "office",
+        "meeting",
+        "room",
+        "company",
+        "organization",
+        "engineering",
+        "marketing",
+        "sales",
+        "finance",
+        "hr",
+        "morning",
+        "afternoon",
+        "evening",
+        "minute",
+        "minutes",
+        "hour",
+        "hours",
+        "general",
+        "charge",
+        "case",
+        "fact",
+        "order",
+        "that",
+        "this",
+        "it",
+        "there",
+        "here",
+    }
+)
+
+# Trailing time words that ride along with a real place ("in Tokyo today").
+_TEMPORAL_WORDS = frozenset(
+    {"today", "tomorrow", "tonight", "now", "currently", "later", "please"}
+)
+
+_LEADING_ARTICLES = ("the", "a", "an")
+
+_PUNCT = "?.,!'\""
+
+
+def extract_city(user_message: str) -> Optional[str]:
     """
-    Extracts the city name from a given natural language user message.
+    Extracts a city/place name from a natural language message.
+
+    Returns None when no confident location is present — callers must then
+    ask the user for clarification instead of guessing (see the EDUCATIONAL
+    NOTE above for the incident that motivated this contract).
     """
     clean_message = user_message.split("For context:")[0].strip()
-    
-    city = "London"
+
+    candidate = ""
     words = clean_message.split()
     if "in" in words:
-        try:
-            idx = words.index("in")
-            city = " ".join(words[idx + 1 :]).strip("?.,!")
-        except IndexError:
-            pass
+        idx = words.index("in")
+        candidate = " ".join(words[idx + 1 :])
     elif len(words) > 0 and not any(
         w in clean_message.lower() for w in ["what", "how", "weather", "forecast"]
     ):
-        city = clean_message.strip("?.,!")
-    
-    return city if city else "London"
+        candidate = clean_message
+
+    tokens = candidate.strip(_PUNCT + " ").split()
+
+    # "in Tokyo today" -> "Tokyo"; "in the UK" -> "UK".
+    while tokens and tokens[-1].lower().strip(_PUNCT) in _TEMPORAL_WORDS:
+        tokens.pop()
+    while tokens and tokens[0].lower() in _LEADING_ARTICLES:
+        tokens.pop(0)
+
+    if not tokens:
+        return None
+    if any(t.lower().strip(_PUNCT) in _NON_PLACE_WORDS for t in tokens):
+        return None
+
+    return " ".join(tokens).strip(_PUNCT)
+
+
+def resolved_area_matches(candidate: str, data: Dict[str, Any]) -> bool:
+    """
+    Sanity-checks that wttr.in resolved the candidate to a plausible area.
+
+    EDUCATIONAL NOTE: Validate What the Upstream API Resolved
+    [Why] wttr.in FUZZY-geocodes its path segment: an arbitrary string never
+    404s, it just resolves to *some* nearest area, and the j1 payload happily
+    reports real weather for it. So extraction guards alone are not enough —
+    a nonsense candidate that slips through would still yield a confident
+    forecast for an unrelated place. The j1 payload echoes what was resolved
+    in `nearest_area` (areaName/region/country) and `request`; a loose,
+    case-insensitive token overlap between the candidate and those names is a
+    cheap second line of defense. Missing/malformed `nearest_area` counts as
+    a match: we cannot validate, and blocking would break older payloads
+    (and the mocked happy-path tests).
+    """
+    resolved_names: list[str] = []
+    try:
+        area = data["nearest_area"][0]
+        for key in ("areaName", "region", "country"):
+            for entry in area.get(key) or []:
+                value = entry.get("value")
+                if value:
+                    resolved_names.append(str(value).lower())
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return True
+    if not resolved_names:
+        return True
+
+    candidate_tokens = {
+        t.strip(_PUNCT) for t in candidate.lower().split() if t.strip(_PUNCT)
+    }
+    resolved_tokens: set[str] = set()
+    for name in resolved_names:
+        resolved_tokens.update(
+            t.strip(_PUNCT) for t in name.replace(",", " ").split()
+        )
+    return bool(candidate_tokens & resolved_tokens)
+
+
+CLARIFICATION_TEXT = (
+    "I couldn't identify a specific location in your request. "
+    "Which city or place would you like the weather for? "
+    "(e.g. 'What is the weather in Tokyo?')"
+)
 
 
 class WeatherAgentExecutor(AgentExecutor):
     """A sub-agent that provides weather forecasts via the A2A protocol."""
+
+    async def _enqueue_status(
+        self,
+        context: RequestContext,
+        event_queue: EventQueue,
+        *,
+        final: bool,
+        text: str,
+    ) -> None:
+        """Enqueues one TaskStatusUpdateEvent carrying a plain text message."""
+        message = Message(
+            message_id=str(uuid.uuid4()),
+            role=Role.agent,
+            parts=[TextPart(text=text)],  # type: ignore[list-item]
+        )
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=context.task_id or "",
+                context_id=context.context_id or "",
+                final=final,
+                status=TaskStatus(
+                    state=TaskState.completed if final else TaskState.working,
+                    message=message,
+                ),
+            )
+        )
 
     async def _fetch_weather_data(self, city: str) -> Dict[str, Any]:
         """
@@ -83,6 +229,26 @@ class WeatherAgentExecutor(AgentExecutor):
         response_text = "I am a specialized Weather Agent. Let me check that for you..."
         weather_metadata: Optional[Dict[str, Any]] = None
 
+        # EDUCATIONAL NOTE: Refuse to Guess
+        # [Why] When no confident location is present we keep the two-phase
+        # streaming contract (one non-final "thinking" update, one final
+        # update) but the final message ASKS for a location instead of
+        # inventing one. A2A also has TaskState.input_required for this; we
+        # stay with `completed` to preserve the simple two-event contract the
+        # orchestrator and tests rely on.
+        if city is None:
+            thinking_text = (
+                f"*(Authenticated as {identity.user_id})* Looking for a "
+                "location in the request...\n"
+            )
+            await self._enqueue_status(
+                context, event_queue, final=False, text=thinking_text
+            )
+            await self._enqueue_status(
+                context, event_queue, final=True, text=CLARIFICATION_TEXT
+            )
+            return
+
         try:
             # Send an initial "thinking" message
             thinking_msg = Message(
@@ -101,6 +267,24 @@ class WeatherAgentExecutor(AgentExecutor):
 
             # Fetch data using our helper
             data = await self._fetch_weather_data(city)
+
+            # Second line of defense: wttr.in never 404s a fuzzy string, so
+            # verify the resolved nearest_area plausibly matches what was
+            # asked before reporting it (see resolved_area_matches).
+            if not resolved_area_matches(city, data):
+                await self._enqueue_status(
+                    context,
+                    event_queue,
+                    final=True,
+                    text=(
+                        f'I couldn\'t confidently resolve "{city}" to a real '
+                        "place (the weather service matched it to an "
+                        "unrelated area). Which city or place would you like "
+                        "the weather for?"
+                    ),
+                )
+                return
+
             current = data["current_condition"][0]
             temp_f = current["temp_F"]
             temp_c = current["temp_C"]

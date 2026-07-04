@@ -5,14 +5,17 @@ This directory tests `../server.py`, the single module that implements the whole
 ## Files at this level
 
 - `test_server.py` — the only test module. Contents:
-  - `test_extract_city` — pins the city-parsing heuristic: "Weather in Tokyo" → Tokyo, trailing punctuation stripped, a bare "Paris" passes through, and question-shaped messages with no "in <city>" default to "London". If you change `extract_city`, update these expectations deliberately.
+  - `test_extract_city` — pins the city-parsing heuristic: "Weather in Tokyo" → Tokyo, trailing punctuation stripped, a bare "Paris" passes through, and trailing temporal words are dropped ("in Tokyo today" → Tokyo). If you change `extract_city`, update these expectations deliberately.
+  - `test_extract_city_returns_none_without_confident_location` — pins the 2026-07-04 hardening: question-shaped messages with no "in <place>" ("What is the forecast?", "What's the weather like?") and non-place candidates leaked from multi-agent context ("in the engineering department", "in the meeting room") all return `None` — there is no "London" fallback anymore; `None` means the executor must ask for clarification.
   - `mock_context` / `mock_event_queue` fixtures — `MagicMock(spec=RequestContext)` with `task_id`/`context_id` set, and `AsyncMock(spec=EventQueue)`. Gotcha: because `mock_context.metadata` is a bare MagicMock, `server.py`'s `context.metadata.get("Authorization")` returns a MagicMock and `IdentityContext` ends up with a MagicMock `user_id` — harmless, but the "thinking" message text contains mock repr noise; assertions therefore use substring matching, not equality.
-  - `test_weather_agent_success` — mocks `https://wttr.in/Berlin?format=j1`, runs `WeatherAgentExecutor.execute`, and asserts the exact event contract: exactly 2 `TaskStatusUpdateEvent`s enqueued — first `final=False` (thinking), second `final=True` with the formatted answer. Message text is reached via `event.status.message.parts[0].root.text` (in a2a-sdk 0.3.x, `parts` holds `Part` wrappers whose payload is `.root`).
+  - `test_weather_agent_success` — mocks `https://wttr.in/Berlin?format=j1` (payload includes a MATCHING `nearest_area` of Berlin/Germany, exercising the pass side of `resolved_area_matches`), runs `WeatherAgentExecutor.execute`, and asserts the exact event contract: exactly 2 `TaskStatusUpdateEvent`s enqueued — first `final=False` (thinking), second `final=True` with the formatted answer. Message text is reached via `event.status.message.parts[0].root.text` (in a2a-sdk 0.3.x, `parts` holds `Part` wrappers whose payload is `.root`).
+  - `test_weather_agent_no_location_asks_for_clarification` — "What's the weather like?" (no location): still exactly 2 events (thinking + final), the final asks "Which city or place...", and `len(respx.calls) == 0` proves no wttr.in call is ever made.
+  - `test_weather_agent_unrelated_resolution_asks_for_clarification` — "Weather in Fooville" with a mocked 200 payload whose `nearest_area` is Buenos Aires/Argentina: the fuzzy-geocoded weather is NEVER reported; the final message says the candidate couldn't be confidently resolved and asks for a location, with no `structured_data` metadata.
   - `test_weather_agent_api_error` — mocks a 404 from wttr.in and asserts the text "Could not retrieve weather for Atlantis. The service returned status 404." (matches `server.py`'s `httpx.HTTPStatusError` branch).
   - `test_weather_agent_parse_error` — mocks a 200 response with a malformed payload (`{"wrong_format": True}`) and asserts "Could not parse weather data for ErrorCity." (matches `server.py`'s dedicated `KeyError`/`IndexError`/`TypeError` parse-error branch; malformed payloads no longer fall through to the generic exception handler).
   - `test_weather_agent_network_error` — mocks a `httpx.RequestError` side effect and asserts the network-error message.
 
-All 5 tests pass against the current `server.py`.
+All 8 tests pass against the current `server.py`.
 
 ## How to run
 

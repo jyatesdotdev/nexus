@@ -34,10 +34,11 @@ For complete details, please see the `AGENTS.md` file (and `tests/AGENTS.md` for
 
 ## ⚙️ How it Works
 
-1.  **Input Parsing**: When a request arrives, the `WeatherAgentExecutor` extracts the city name from the user's message. It looks for patterns like "in [City]" or uses the entire message if it's a simple query.
+1.  **Input Parsing**: When a request arrives, the `WeatherAgentExecutor` extracts the city name from the user's message. It looks for patterns like "in [City]" or uses the entire message if it's a simple query. Crucially, it **refuses to guess**: if no confident location is present (no pattern match, or the candidate contains obvious non-place words like "department" or "morning" — which can leak into delegated messages from earlier conversation topics in a multi-agent system), the agent asks the caller for a specific location instead of inventing one.
 2.  **API Integration**: It makes an asynchronous HTTP request to `https://wttr.in/{city}?format=j1`. This provides a no-auth, JSON-based weather forecast.
-3.  **Streaming Feedback**: Before the final answer, the agent sends a "thinking" message (e.g., "Fetching weather data for London...") to provide immediate feedback to the user via the orchestrator.
-4.  **A2A Events**: The final result and the task completion status are enqueued as A2A-compliant events, ensuring the root orchestrator can track the lifecycle of the request.
+3.  **Resolution Validation**: wttr.in fuzzy-geocodes *any* string (nonsense never 404s), so the agent sanity-checks the payload's `nearest_area` against the requested candidate (loose, case-insensitive token overlap). If the service resolved the request to an unrelated place, the agent asks for clarification rather than confidently reporting the wrong weather.
+4.  **Streaming Feedback**: Before the final answer, the agent sends a "thinking" message (e.g., "Fetching weather data for London...") to provide immediate feedback to the user via the orchestrator. The two-phase contract (one thinking update, one final update) holds on every path, including clarifications.
+5.  **A2A Events**: The final result and the task completion status are enqueued as A2A-compliant events, ensuring the root orchestrator can track the lifecycle of the request.
 
 ## 🚀 Running the Agent
 

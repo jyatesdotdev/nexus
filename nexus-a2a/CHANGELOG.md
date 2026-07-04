@@ -1,5 +1,11 @@
 # Changelog - Nexus Weather (A2A)
 
+## [Bugfix] - 2026-07-04
+- **Never report weather for non-locations:** Live incident: after an HR question, "What's the weather like?" (no location) was delegated with "in the engineering department" spliced in by the orchestrator; `extract_city` grabbed it and wttr.in fuzzy-geocoded the nonsense into a confident forecast. Two layers of defense added:
+  - `extract_city` now returns `Optional[str]` — no more `"London"` fallback. Candidates are sanitized (trailing temporal words, leading articles) and rejected when they contain obvious non-place words (department/team/office/morning/...); `None` makes the executor ask for a specific location (two-phase streaming contract preserved: thinking update, then a final clarification, no wttr.in call).
+  - `resolved_area_matches`: after fetching, the j1 payload's `nearest_area` (areaName/region/country) must loosely token-overlap the requested candidate; otherwise the fuzzy-geocoded result is discarded and the agent asks for clarification. Missing `nearest_area` counts as a match (can't validate).
+- **Testing:** Suite grows 5 → 8: no-location query → clarification with zero HTTP calls; nonsense candidate resolved to an unrelated area → clarification without `structured_data`; extraction hardening cases (None for question-shaped/non-place inputs, "in Tokyo today" → Tokyo); happy path unchanged (Berlin mock now carries a matching `nearest_area`).
+
 ## [Tooling] - 2026-07-04
 - **uv workspace:** Runtime deps moved into `pyproject.toml` `[project]` (the `a2a-sdk[http-server]==0.3.25` pin unchanged) with dev tooling in `[dependency-groups]`; `nexus-common` is now a `{ workspace = true }` source. The per-service `venv/` is gone — `uv sync` at the workspace root creates the shared `.venv`, and `uv run pytest|ruff|mypy` replaces the venv-bin invocations. `requirements.txt` stays as a hand-kept mirror for the Dockerfile and CI (header comment documents the sync rule).
 - **pytest:** `pythonpath = ["."]` added to pyproject so tests can `import server` without a manual `PYTHONPATH=.`.
