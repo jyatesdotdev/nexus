@@ -7,7 +7,7 @@ file. The application services (orchestrator, MCP server, A2A agent, frontend) l
 separate compose file in `../nexus-stack` and join the same external Docker network,
 `nexus-net`, so containers from both stacks resolve each other by service name. This stack
 is normally started indirectly by `make up` in `../nexus-stack`, which runs
-`docker compose up -d` here first. This directory is NOT its own git repository.
+`docker compose up -d` here first. This directory is part of the single workspace-root git repository.
 
 Telemetry flow: application services send OTLP/HTTP to `otel-collector:4319` (set via
 `OTEL_EXPORTER_OTLP_ENDPOINT` in `nexus-stack/docker-compose.yml`); the collector forwards

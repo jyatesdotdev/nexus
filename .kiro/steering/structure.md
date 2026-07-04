@@ -4,7 +4,7 @@ inclusion: always
 
 # Project Structure & Conventions
 
-Monorepo of independently deployable services. Each service has its own venv/node_modules, Dockerfile, test suite, and `.git` repo. For tech stack details see `tech.md`; for product context see `product.md`.
+Monorepo (single `.git` at the workspace root) of independently deployable services. Each service has its own venv/node_modules, Dockerfile, and test suite. For tech stack details see `tech.md`; for product context see `product.md`.
 
 ## Directory Layout
 

@@ -76,7 +76,7 @@ because the compose build contexts point at the parent directory (`..`).
 - `CHANGELOG.md` — reverse-chronological history, also predating the polyrepo split.
 - `.gitignore` — ignores `.env`, venvs, caches, `*.db`.
 
-This directory IS its own git repository. There are no subdirectories to document.
+This directory is part of the single workspace-root git repository. There are no subdirectories to document.
 
 ## How to run
 

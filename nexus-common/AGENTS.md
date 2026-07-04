@@ -12,7 +12,7 @@ The importable package is `nexus_common` (underscore); the distribution name is
 `nexus-common` (hyphen). Services install it in editable mode with
 `pip install -e ../nexus-common`, and the docker-compose file in `../nexus-stack`
 bind-mounts this directory into each service container at `/nexus-common`. This directory
-is NOT its own git repository (unlike most sibling `nexus-*` directories).
+is part of the single workspace-root git repository.
 
 ## Files at this level
 

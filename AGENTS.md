@@ -30,9 +30,9 @@ The orchestrator is the single entry point for user requests. It routes each req
 
 Each of these directories has its own AGENTS.md with per-file detail; nested directories (e.g. `nexus-orchestrator/orchestrator/persistence/`, `nexus-ui/src/components/`) have their own as well.
 
-## Version-control layout — read before committing
+## Version-control layout
 
-This workspace is NOT one git repository. The parent directory has no `.git`. Each of `nexus-orchestrator`, `nexus-mcp`, `nexus-a2a`, `nexus-ui`, `nexus-stack`, and `nexus-integration` is an independent git repo — commit inside the repo you changed. `nexus-common` and `nexus-dev-infra` are currently NOT version-controlled at all: changes there have no history, so be careful and deliberate.
+This workspace is ONE git repository rooted here (consolidated from per-service repos on 2026-07-04; each service's prior history was preserved and is browsable with `git log -- <service-dir>/`). Commit from the workspace root. Cross-service changes (e.g. an SSE event-shape change touching both the orchestrator and the UI) should land as a single atomic commit. The services remain independently deployable containers — that boundary lives in `nexus-stack/docker-compose.yml`, not in repo layout.
 
 
 ## Running and testing

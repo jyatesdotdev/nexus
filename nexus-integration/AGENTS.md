@@ -11,7 +11,7 @@ There is no pyproject/requirements file here. The intended way to run these test
 inside the orchestrator container: `nexus-stack/docker-compose.yml` bind-mounts this
 directory into the orchestrator at `/e2e_tests`, and the orchestrator image already has
 every dependency the tests import (`pytest`, `pytest-asyncio`, `httpx`, `redis`,
-`asyncpg`). This directory IS its own git repository.
+`asyncpg`). This directory is part of the single workspace-root git repository.
 
 ## Files at this level
 
