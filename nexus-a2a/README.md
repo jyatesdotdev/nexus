@@ -16,7 +16,7 @@ This project adheres strictly to **Educational Integrity** standards. This means
 - **Testing Strategy** ensures complete isolation; we never touch external APIs during test runs, relying on `respx` for robust mocking.
 - **Docker Deployment** follows best practices: using multi-stage builds, non-root users, strict `.dockerignore` files, and native healthchecks.
 
-For complete details, please see the `GEMINI.md` file.
+For complete details, please see the `AGENTS.md` file (and `tests/AGENTS.md` for the test suite).
 
 ## 🏗️ Core Architecture (HOW & WHY)
 
@@ -77,4 +77,31 @@ If you want to run it locally without Docker:
 ## 🩺 Health & Discovery
 The agent provides a standard A2A discovery endpoint:
 - **Discovery Card**: `GET /.well-known/agent-card.json`
-- **JSON-RPC Endpoint**: `POST /rpc` (Handles A2A protocol methods like `execute`)
+- **JSON-RPC Endpoint**: `POST /` (the a2a-sdk default; handles A2A protocol methods like `message/send` and `message/stream`)
+
+
+## 📏 Nexus Engineering Standards
+
+This project adheres to the **Nexus Engineering Standards**, prioritizing educational clarity, production-grade quality, and architectural consistency. All contributors and sub-agents must follow these mandates:
+
+### 1. Educational Integrity
+- **Prefix:** Standardize all architectural and 'Why' commentary using the `# EDUCATIONAL NOTE:` (or language-appropriate) prefix.
+- **Clarity:** Every non-trivial architectural choice must be accompanied by a note explaining the trade-offs and rationale.
+
+### 2. Code Quality & Type Safety
+- **Python:** Strict linting via `ruff` and static type checking via `mypy`.
+- **UI/TypeScript:** Enforce `strict: true` in `tsconfig.json` and use ESLint for React/TypeScript best practices.
+- **Automation:** Quality checks should be integrated into the `Makefile` or CI/CD pipelines.
+
+### 3. Testing Isolation
+- **No Side Effects:** Tests must be completely isolated. They must never hit external APIs (Gemini, Open-Meteo, etc.) or production resources.
+- **Mocking:** Use robust mocking (e.g., `unittest.mock`, `pytest-mock`, `MSW`) to simulate all external dependencies and network boundaries.
+
+### 4. Containerization & Production Readiness
+- **Multi-stage Builds:** Dockerfiles must use multi-stage builds to keep production images lean.
+- **Security:** Always run containers as a non-root user (`USER appuser`).
+- **Healthchecks:** Every service must define a native `HEALTHCHECK` in its Dockerfile and/or `docker-compose.yml`.
+
+### 5. Documentation
+- **Living Reference:** `AGENTS.md` and `README.md` must be kept in sync with the project's actual state.
+- **Architectural Diagrams:** Use Mermaid.js or clear text-based diagrams to visualize service interactions.

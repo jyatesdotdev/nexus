@@ -4,7 +4,7 @@ import httpx
 from unittest.mock import AsyncMock, MagicMock
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
-from a2a.types import Message, TaskStatusUpdateEvent
+from a2a.types import TaskStatusUpdateEvent
 
 from server import extract_city, WeatherAgentExecutor
 
@@ -49,25 +49,24 @@ async def test_weather_agent_success(mock_context, mock_event_queue):
     await executor.execute(mock_context, mock_event_queue)
 
     # Assert events were enqueued
-    assert mock_event_queue.enqueue_event.call_count == 3
+    # EDUCATIONAL NOTE: We now enqueue 2 TaskStatusUpdateEvents (thinking and final result)
+    # instead of 3 mixed events, which is more efficient and protocol-compliant.
+    assert mock_event_queue.enqueue_event.call_count == 2
 
-    # 1. Thinking message
-    thinking_msg = mock_event_queue.enqueue_event.call_args_list[0][0][0]
-    assert isinstance(thinking_msg, Message)
-    assert "Fetching weather data for **Berlin**" in thinking_msg.parts[0].root.text
+    # 1. Thinking status update
+    thinking_event = mock_event_queue.enqueue_event.call_args_list[0][0][0]
+    assert isinstance(thinking_event, TaskStatusUpdateEvent)
+    assert thinking_event.final is False
+    assert "Fetching weather data for **Berlin**" in thinking_event.status.message.parts[0].root.text
 
-    # 2. Result message
-    result_msg = mock_event_queue.enqueue_event.call_args_list[1][0][0]
-    assert isinstance(result_msg, Message)
+    # 2. Result status update
+    result_event = mock_event_queue.enqueue_event.call_args_list[1][0][0]
+    assert isinstance(result_event, TaskStatusUpdateEvent)
+    assert result_event.final is True
     assert (
         "The current weather in **Berlin** is Sunny with a temperature of 68°F (20°C)."
-        in result_msg.parts[0].root.text
+        in result_event.status.message.parts[0].root.text
     )
-
-    # 3. TaskStatusUpdateEvent
-    status_event = mock_event_queue.enqueue_event.call_args_list[2][0][0]
-    assert isinstance(status_event, TaskStatusUpdateEvent)
-    assert status_event.final is True
 
 
 @pytest.mark.asyncio
@@ -80,10 +79,11 @@ async def test_weather_agent_api_error(mock_context, mock_event_queue):
     executor = WeatherAgentExecutor()
     await executor.execute(mock_context, mock_event_queue)
 
-    result_msg = mock_event_queue.enqueue_event.call_args_list[1][0][0]
+    # Check the final event's message
+    result_event = mock_event_queue.enqueue_event.call_args_list[1][0][0]
     assert (
         "Could not retrieve weather for Atlantis. The service returned status 404."
-        in result_msg.parts[0].root.text
+        in result_event.status.message.parts[0].root.text
     )
 
 
@@ -99,9 +99,9 @@ async def test_weather_agent_parse_error(mock_context, mock_event_queue):
     executor = WeatherAgentExecutor()
     await executor.execute(mock_context, mock_event_queue)
 
-    result_msg = mock_event_queue.enqueue_event.call_args_list[1][0][0]
+    result_event = mock_event_queue.enqueue_event.call_args_list[1][0][0]
     assert (
-        "Could not parse weather data for ErrorCity." in result_msg.parts[0].root.text
+        "Could not parse weather data for ErrorCity." in result_event.status.message.parts[0].root.text
     )
 
 
@@ -117,8 +117,8 @@ async def test_weather_agent_network_error(mock_context, mock_event_queue):
     executor = WeatherAgentExecutor()
     await executor.execute(mock_context, mock_event_queue)
 
-    result_msg = mock_event_queue.enqueue_event.call_args_list[1][0][0]
+    result_event = mock_event_queue.enqueue_event.call_args_list[1][0][0]
     assert (
         "A network error occurred while fetching the weather: Connection failed"
-        in result_msg.parts[0].root.text
+        in result_event.status.message.parts[0].root.text
     )
