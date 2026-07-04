@@ -56,21 +56,20 @@ docker compose up a2a-agent
 ```
 
 ### Manual Setup
-If you want to run it locally without Docker:
-1.  **Set up environment & Install Dependencies**:
+If you want to run it locally without Docker (the workspace uses a shared [uv](https://docs.astral.sh/uv/) workspace — no per-service virtualenv):
+1.  **Set up the environment** (once, from the workspace root):
     ```bash
-    python3 -m venv venv && source venv/bin/activate
-    pip install -r requirements.txt
+    cd .. && uv sync && cd nexus-a2a
     ```
 2.  **Code Quality & Testing**:
     ```bash
-    ruff check .
-    mypy server.py
-    pytest
+    uv run ruff check .
+    uv run mypy server.py
+    uv run pytest
     ```
 3.  **Start the Server**:
     ```bash
-    python server.py
+    uv run python server.py
     ```
     The agent will be available at `http://localhost:8001`. You can view the discovery card at `http://localhost:8001/.well-known/agent-card.json`.
 

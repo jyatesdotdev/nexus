@@ -1,5 +1,3 @@
-from typing import Dict, Optional
-
 # EDUCATIONAL NOTE: Identity Propagation (Mock JWT)
 # This module provides a standardized way to extract user identity from
 # incoming requests and propagate it to downstream agents. In a real system,
@@ -9,8 +7,10 @@ class IdentityContext:
     """
     Standardized context for handling user identity across the Nexus ecosystem.
     """
-    def __init__(self, auth_header: Optional[str] = None):
-        self.raw_token = None
+    def __init__(self, auth_header: str | None = None):
+        # Explicit annotation: strict mypy would otherwise infer `None` from
+        # this first assignment and reject the `str` re-assignments below.
+        self.raw_token: str | None = None
         self.user_id = "anonymous"
         
         if auth_header and auth_header.startswith("Bearer "):
@@ -25,7 +25,7 @@ class IdentityContext:
             else:
                 self.user_id = self.raw_token
 
-    def get_auth_header(self) -> Dict[str, str]:
+    def get_auth_header(self) -> dict[str, str]:
         """Returns the standard Authorization header for downstream propagation."""
         if self.raw_token:
             return {"Authorization": f"Bearer {self.raw_token}"}

@@ -56,25 +56,24 @@ the sibling `nexus-common/`:
 
 ### Manual Execution
 
-1.  **Set up environment** (requires the sibling `../nexus-common` checkout):
+1.  **Set up environment** (the workspace shares one [uv](https://docs.astral.sh/uv/) workspace — no per-service virtualenv):
     ```bash
-    python3 -m venv venv && source venv/bin/activate
-    pip install -r requirements.txt -r requirements-dev.txt
+    cd .. && uv sync && cd nexus-mcp
     ```
 2.  **Apply migrations** (optional):
     ```bash
-    alembic upgrade head
+    uv run alembic upgrade head
     ```
     The server also runs `SQLModel.metadata.create_all()` on startup, so a fresh
     database works without this step. If you have an existing database whose
     schema was created by the server rather than by Alembic, mark it as current
     instead of re-running the migration:
     ```bash
-    alembic stamp head
+    uv run alembic stamp head
     ```
 3.  **Start the server:**
     ```bash
-    python server.py
+    uv run python server.py
     ```
 
 ## 🧪 Development & Quality
@@ -82,20 +81,20 @@ the sibling `nexus-common/`:
 ### Linting & Formatting
 We use **Ruff** for fast linting and formatting:
 ```bash
-ruff format .
-ruff check --fix .
+uv run ruff format .
+uv run ruff check --fix .
 ```
 
 ### Type Checking
 Ensure type safety with **Mypy**:
 ```bash
-mypy .
+uv run mypy .
 ```
 
 ### Running Tests
 Execute the test suite using **Pytest**:
 ```bash
-pytest
+uv run pytest
 ```
 
 ## 📂 Project Structure

@@ -1,0 +1,16 @@
+# Nexus workspace root: a uv workspace tying the four Python projects together
+# so one `uv sync` at this level produces a single shared .venv (and uv.lock)
+# for local development. Docker images and CI intentionally do NOT use this —
+# they install each service's requirements.txt in isolation (see the header
+# comment in each service's requirements.txt).
+#
+# nexus-integration is deliberately NOT a member: its tests run inside the
+# orchestrator container against the live compose stack (nexus-stack `make
+# test`), so it uses the orchestrator image's dependencies, not a local env.
+[tool.uv.workspace]
+members = [
+    "nexus-a2a",
+    "nexus-common",
+    "nexus-mcp",
+    "nexus-orchestrator",
+]

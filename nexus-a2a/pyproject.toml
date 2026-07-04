@@ -1,6 +1,47 @@
+[project]
+name = "nexus-a2a"
+version = "0.1.0"
+description = "A2A-protocol weather sub-agent for the Nexus Multi-Agent Lab"
+requires-python = ">=3.14"
+dependencies = [
+    # a2a-sdk 1.x removed a2a.server.apps.jsonrpc.starlette_app, which
+    # server.py imports. Pin to the 0.3.x line (with the http-server extra
+    # that provides the Starlette JSON-RPC app) until the code is migrated.
+    "a2a-sdk[http-server]==0.3.25",
+    "uvicorn",
+    "starlette",
+    "sse-starlette",
+    "httpx",
+    "gunicorn",
+    "nexus-common",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "respx",
+    "ruff",
+    "mypy",
+]
+
+# This is an application, not a library: nothing imports "nexus_a2a", so uv
+# manages its dependencies without building/installing the project itself.
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+nexus-common = { workspace = true }
+
 [tool.ruff]
 target-version = "py314"
 line-length = 88
 
 [tool.mypy]
 strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Tests import server.py by module name; "." keeps that working regardless of
+# the directory pytest is invoked from (mirrors the old PYTHONPATH=. ritual).
+pythonpath = ["."]

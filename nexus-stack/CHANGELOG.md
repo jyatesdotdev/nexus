@@ -1,5 +1,9 @@
 # Changelog
 
+## [Tooling] - 2026-07-04
+- **Makefile:** `test`, `lint`, and `type-check` now run the Python services through the uv workspace at the repo root (one `uv sync`, then `uv run --no-sync` per service) instead of reusing `../nexus-orchestrator/venv`, which no longer exists. `lint` checks all four Python projects (nexus-common included) in one ruff invocation.
+- **Preflight:** `make doctor` additionally checks that `uv` is installed (required by the targets above).
+
 ## [Onboarding & Demo Tooling] - 2026-07-04
 - **Onboarding:** Added `.env.example` documenting every environment variable the stack consumes (placeholders only), including optional `A2A_AGENT_URLS` / `REVIEWER_ENFORCEMENT` overrides and a note on UI build-time `VITE_*` variables.
 - **Preflight:** Added `make doctor` (`scripts/doctor.sh`) — checks Docker CLI/daemon, `.env` + non-placeholder `GEMINI_API_KEY` (presence only, value never printed), the external `nexus-net` network, and Node/npm; reports all problems with fixes and exits nonzero.

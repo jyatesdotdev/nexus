@@ -1,3 +1,4 @@
+# Manual mirror of pyproject.toml deps (runtime [project] list + dev tooling from [dependency-groups]), kept for the Dockerfile and CI installs — update BOTH files when deps change (local dev uses the uv workspace instead).
 # EDUCATIONAL NOTE: a2a-sdk 1.x removed a2a.server.apps.jsonrpc.starlette_app,
 # which server.py imports. Pin to the 0.3.x line (with the http-server extra
 # that provides the Starlette JSON-RPC app) until the code is migrated.

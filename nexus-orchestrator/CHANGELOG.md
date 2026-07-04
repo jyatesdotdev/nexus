@@ -1,5 +1,9 @@
 # Changelog - Nexus Core
 
+## [Tooling] - 2026-07-04
+- **uv workspace:** Runtime deps moved into `pyproject.toml` `[project]` (pins preserved) with dev tooling in `[dependency-groups]`; `nexus-common` is now a `{ workspace = true }` source. The per-service `venv/` is gone — `uv sync` at the workspace root creates the shared `.venv`, and `uv run pytest|ruff|mypy|python main.py …` replaces the venv-bin invocations. `requirements.txt` stays as a hand-kept mirror for the Dockerfile and CI (header comment documents the sync rule).
+- **Lint:** Ruff `target-version` raised py310 → py314 (matching the 3.14 runtime everywhere); `requires-python = ">=3.14"` declared. No new findings.
+
 ## [Feature] - 2026-07-04
 - **Observability (X-Trace-Id):** Every `POST /run_sse` response (including 401/404 rejections) now carries an `X-Trace-Id` header with the current OpenTelemetry trace id (32-char hex), attached in `middleware.py` before the SSE body starts streaming; `server.py` amends the ADK CORS middleware with `Access-Control-Expose-Headers: X-Trace-Id` so the cross-origin UI can read it. Falls back to a random well-formed id when no OTel provider is configured.
 - **Governance (Reviewer on HTTP path):** New `GovernedAdkWebServer` (`server.py`) overrides ADK's private `AdkWebServer._create_runner` seam so HTTP `/run_sse` runners get the same `Runner → LoopDetectionRunner → ReviewerEnforcementRunner` pipeline as the CLI/evals path (previously UI traffic bypassed the reviewer). The pipeline is centralized in `reviewer.build_governed_runner` (with `LoopDetectionRunner` moved from `app.py` to `reviewer.py`) and toggleable via the new `REVIEWER_ENFORCEMENT` env var (default `true`).

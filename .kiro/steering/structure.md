@@ -4,7 +4,7 @@ inclusion: always
 
 # Project Structure & Conventions
 
-Monorepo (single `.git` at the workspace root) of independently deployable services. Each service has its own venv/node_modules, Dockerfile, and test suite. For tech stack details see `tech.md`; for product context see `product.md`.
+Monorepo (single `.git` at the workspace root) of independently deployable services. The Python services share one uv workspace (root `pyproject.toml` + `uv.lock` + `.venv/`); each service keeps its own Dockerfile, test suite, and (for the UI) node_modules. For tech stack details see `tech.md`; for product context see `product.md`.
 
 ## Directory Layout
 
@@ -78,8 +78,9 @@ nexus-common/                # Shared Python SDK
 ├── nexus_common/
 │   ├── __init__.py          # Exports: setup_telemetry, IdentityContext, verify_token
 │   ├── auth.py              # IdentityContext, mock JWT parsing
-│   └── telemetry.py         # OTel + Prometheus setup
-└── pyproject.toml
+│   ├── telemetry.py         # OTel + Prometheus setup
+│   └── py.typed             # PEP 561 marker — consumers' mypy sees real types
+└── pyproject.toml           # hatchling build backend
 
 nexus-stack/                 # Full Stack Orchestration
 ├── docker-compose.yml       # App services on nexus-net
@@ -103,7 +104,8 @@ nexus-integration/           # E2E Integration Tests (run in Docker)
 ## File Naming & Location Rules
 
 - Python service entry points: `server.py` (or `main.py` for orchestrator CLI)
-- Shared Python code: `nexus-common/`, installed as `pip install -e ../nexus-common` in each service
+- Shared Python code: `nexus-common/`, a uv-workspace source (`{ workspace = true }`) locally; Docker/CI install it as `pip install -e ../nexus-common` via requirements.txt
+- Python deps: `[project]`/`[dependency-groups]` in each service's `pyproject.toml` (uv workspace at the repo root); each `requirements.txt` is a hand-kept mirror for Docker/CI — update both together
 - Tests: `tests/` directory within each service; co-located `*.test.tsx` in nexus-ui
 - Python config (ruff, mypy, pytest): `pyproject.toml` per service (orchestrator also has `pytest.ini`)
 - Documentation per service: `README.md` (user-facing) + `AGENTS.md` (AI context, one per directory level) — keep in sync

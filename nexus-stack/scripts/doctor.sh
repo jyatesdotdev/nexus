@@ -82,6 +82,15 @@ else
        "npm ships with Node.js — install Node.js first"
 fi
 
+# 5. uv — the Python services share one uv workspace rooted a directory up;
+#    'make test/lint/type-check' drive their venv-free dev loop through it.
+if command -v uv >/dev/null 2>&1; then
+  ok "uv installed ($(uv --version | head -n1))"
+else
+  fail "uv not found (required: make test/lint/type-check use the uv workspace)" \
+       "install uv: 'brew install uv' or see https://docs.astral.sh/uv/getting-started/installation/"
+fi
+
 echo "-----------------------------------"
 if [ "$FAILURES" -eq 0 ]; then
   echo "All checks passed. Next: make up, then make demo."

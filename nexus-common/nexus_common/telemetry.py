@@ -1,14 +1,15 @@
 import logging
 import os
 import time
-from typing import Any, Optional, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 # EDUCATIONAL NOTE: Centralized Observability
 # This shared module ensures that all microservices in the Nexus ecosystem
 # use a consistent OpenTelemetry configuration, enabling seamless distributed
 # tracing across the entire call graph.
 
-def setup_telemetry(service_name: str, app: Optional[Any] = None, app_type: str = "fastapi") -> None:
+def setup_telemetry(service_name: str, app: Any | None = None, app_type: str = "fastapi") -> None:
     """
     Initializes OpenTelemetry Tracing and Prometheus Metrics.
     """
@@ -57,7 +58,8 @@ def setup_telemetry(service_name: str, app: Optional[Any] = None, app_type: str 
         if multiproc_dir:
             from prometheus_client import multiprocess
             registry = CollectorRegistry()
-            multiprocess.MultiProcessCollector(registry)
+            # prometheus_client.multiprocess ships no annotations upstream.
+            multiprocess.MultiProcessCollector(registry)  # type: ignore[no-untyped-call]
             
             def get_metrics_data() -> bytes:
                 return generate_latest(registry)
@@ -85,9 +87,17 @@ def setup_telemetry(service_name: str, app: Optional[Any] = None, app_type: str 
 
         if app:
             if app_type == "fastapi":
-                from fastapi import Response, Request
-                
-                @app.middleware("http")
+                # Imported from starlette (not fastapi): fastapi.Request/Response
+                # ARE starlette's classes re-exported, and starlette is present in
+                # every consumer's environment — while fastapi is only installed
+                # by the orchestrator. This keeps strict mypy runs in the
+                # starlette-only services (mcp, a2a) able to follow this module.
+                from starlette.requests import Request
+                from starlette.responses import Response
+
+                # `app` is deliberately Any (this helper serves FastAPI and
+                # Starlette apps alike), so its decorators are untyped to mypy.
+                @app.middleware("http")  # type: ignore[untyped-decorator]
                 async def prometheus_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
                     start_time = time.time()
                     response = await call_next(request)
@@ -102,7 +112,7 @@ def setup_telemetry(service_name: str, app: Optional[Any] = None, app_type: str 
                     
                     return response
 
-                @app.get("/metrics")
+                @app.get("/metrics")  # type: ignore[untyped-decorator]
                 async def metrics() -> Response:
                     return Response(content=get_metrics_data(), media_type=CONTENT_TYPE_LATEST)
                 

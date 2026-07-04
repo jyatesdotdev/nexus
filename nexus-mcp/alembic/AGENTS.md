@@ -54,16 +54,17 @@ either order:
 
 ```bash
 # create a new revision after changing the User model in database.py
-./venv/bin/python -m alembic revision --autogenerate -m "describe change"
+uv run alembic revision --autogenerate -m "describe change"
 
 # apply migrations to a specific database
-DATABASE_URL="sqlite:///hr.db" ./venv/bin/python -m alembic upgrade head
+DATABASE_URL="sqlite:///hr.db" uv run alembic upgrade head
 
 # mark an existing create_all-made database as already at head
-DATABASE_URL="sqlite:///hr.db" ./venv/bin/python -m alembic stamp head
+DATABASE_URL="sqlite:///hr.db" uv run alembic stamp head
 ```
 
-(The venv was recreated 2026-07, so `./venv/bin/alembic` also works directly.)
+(`uv run` resolves alembic from the shared workspace `.venv` at the repo root;
+run `uv sync` there first if the environment is missing.)
 
 ## Caution / do not modify
 

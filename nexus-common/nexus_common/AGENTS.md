@@ -54,6 +54,11 @@ any signature or behavior change here must be checked against all of them.
   as such, and do not add real JWT verification without updating every service that mints
   mock tokens.
 
+- `py.typed` — empty PEP 561 marker (added 2026-07-04) telling consumers' type-checkers
+  that this package ships real inline types. nexus-mcp's strict mypy gate depends on it;
+  do not delete. The whole package is mypy-strict clean (`uv run mypy .` from the
+  nexus-common directory).
+
 ## Testing
 
 This package has no tests of its own. Behavior is covered by the consuming services' unit

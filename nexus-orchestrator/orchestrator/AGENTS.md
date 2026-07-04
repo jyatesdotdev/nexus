@@ -29,10 +29,10 @@ IMPORTANT side-effect: importing `orchestrator.app` builds the root agent and th
 From the repo root (`/Users/jyates/Repositories/nexus/nexus-orchestrator`):
 
 ```bash
-./venv/bin/python main.py serve            # HTTP server on :8080
-./venv/bin/python main.py chat "hello"     # CLI
-./venv/bin/python -m pytest tests/         # unit tests (mocked, no key needed)
-./venv/bin/mypy orchestrator               # strict typing is enforced project-wide
+uv run python main.py serve            # HTTP server on :8080
+uv run python main.py chat "hello"     # CLI
+uv run pytest tests/         # unit tests (mocked, no key needed)
+uv run mypy orchestrator               # strict typing is enforced project-wide
 ```
 
 ## Caution / do not modify

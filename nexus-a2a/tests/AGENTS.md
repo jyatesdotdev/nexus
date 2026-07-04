@@ -16,14 +16,14 @@ All 5 tests pass against the current `server.py`.
 
 ## How to run
 
-Tests import `server` as a top-level module, so run from the repo root with the root on `PYTHONPATH`:
+Tests import `server` as a top-level module (pyproject's pytest config sets `pythonpath = ["."]`, so any invocation directory works):
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-a2a
-PYTHONPATH=. venv/bin/python -m pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
-This mirrors how `../../nexus-stack/Makefile` (`make test`) invokes the suite (it uses the nexus-orchestrator venv's Python). Dependencies needed: `pytest`, `pytest-asyncio` (async tests are marked explicitly with `@pytest.mark.asyncio`; no asyncio-mode config file exists), `respx`, `httpx`, `a2a-sdk[http-server]==0.3.25` (1.x breaks `server.py` imports; requirements.txt pins this), and the sibling `nexus-common` package (`pip install -e ../nexus-common`) — all pulled in by `pip install -r requirements.txt` run from the repo root.
+This mirrors how `../../nexus-stack/Makefile` (`make test`) invokes the suite (via `uv run --no-sync` against the shared workspace `.venv`). Dependencies needed: `pytest`, `pytest-asyncio` (async tests are marked explicitly with `@pytest.mark.asyncio`), `respx`, `httpx`, `a2a-sdk[http-server]==0.3.25` (1.x breaks `server.py` imports; the pyproject and requirements.txt both pin this), and the sibling `nexus-common` package (a uv workspace source) — all installed by `uv sync` at the workspace root.
 
 ## Caution
 

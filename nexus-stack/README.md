@@ -42,7 +42,7 @@ cp .env.example .env
 ```bash
 make doctor
 ```
-Verifies Docker (CLI + daemon), your `.env` / API key, the shared `nexus-net` network, and Node/npm — with a fix suggestion for anything missing.
+Verifies Docker (CLI + daemon), your `.env` / API key, the shared `nexus-net` network, Node/npm, and uv (the Python test/lint targets run through the workspace-root uv environment) — with a fix suggestion for anything missing.
 
 ### 3. Run the Stack (using Make)
 ```bash

@@ -1,5 +1,10 @@
 # Changelog - Nexus Weather (A2A)
 
+## [Tooling] - 2026-07-04
+- **uv workspace:** Runtime deps moved into `pyproject.toml` `[project]` (the `a2a-sdk[http-server]==0.3.25` pin unchanged) with dev tooling in `[dependency-groups]`; `nexus-common` is now a `{ workspace = true }` source. The per-service `venv/` is gone — `uv sync` at the workspace root creates the shared `.venv`, and `uv run pytest|ruff|mypy` replaces the venv-bin invocations. `requirements.txt` stays as a hand-kept mirror for the Dockerfile and CI (header comment documents the sync rule).
+- **pytest:** `pythonpath = ["."]` added to pyproject so tests can `import server` without a manual `PYTHONPATH=.`.
+- **Typing:** nexus-common now ships `py.typed`, so mypy follows its real types here.
+
 ## [Maintenance] - 2026-07-03
 - **Dependencies:** Pinned `a2a-sdk[http-server]==0.3.25`; the 1.x line removes `a2a.server.apps.jsonrpc.starlette_app` and breaks `server.py` imports.
 - **Error Handling:** Added an explicit parse-error branch for malformed wttr.in payloads ("Could not parse weather data for {city}.") instead of falling through to the generic handler.

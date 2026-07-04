@@ -12,15 +12,16 @@ The whole service is one Python module (`server.py`) plus tests. It depends on t
   - `AgentCard`: name "Weather Sub-Agent", version 1.0.0, one skill with id `weather_forecast`, `capabilities=AgentCapabilities(streaming=True)`, `url` taken from `A2A_PUBLIC_URL`. This card is what the orchestrator routes on.
   - Server wiring: `A2AStarletteApplication(agent_card, DefaultRequestHandler(WeatherAgentExecutor(), InMemoryTaskStore())).build()` produces the ASGI `app`, then `bootstrap_starlette_service(service_name="a2a-agent", app=app)` (from nexus-common) adds `GET /health` and OpenTelemetry instrumentation. Env vars: `A2A_HOST` (default `0.0.0.0`), `A2A_PORT` (default `8001`), `A2A_PUBLIC_URL` (default `http://a2a-agent:{PORT}` — the Docker network name, not localhost). Running `python server.py` starts uvicorn with reload.
   - Endpoints served: agent card at `GET /.well-known/agent-card.json`, JSON-RPC at `POST /` (the SDK default — there is no `/rpc` route), health at `GET /health`.
-- `requirements.txt` — runtime + dev deps in one file, including `-e ../nexus-common` (a relative path: `pip install -r requirements.txt` must be run from this repo's root with the sibling checkout present). Pins `a2a-sdk[http-server]==0.3.25`: the code only works with the 0.3.x line — a2a-sdk 1.x removes `a2a.server.apps.jsonrpc.starlette_app` and `server.py` fails at import. Do not loosen the pin without migrating the imports.
-- `pyproject.toml` — tool config only (no `[project]` section; this is not a package). Ruff targets py314 with line length 88; mypy is `strict = true` (server.py carries a few `# type: ignore[list-item]` comments to satisfy it).
+- `requirements.txt` — manual mirror of the pyproject deps (runtime + dev tooling), kept ONLY for the Dockerfile and CI installs, including `-e ../nexus-common` (a relative path: `pip install -r requirements.txt` must be run from this directory with the sibling checkout present). Local dev uses the uv workspace instead (see below). Pins `a2a-sdk[http-server]==0.3.25`: the code only works with the 0.3.x line — a2a-sdk 1.x removes `a2a.server.apps.jsonrpc.starlette_app` and `server.py` fails at import. Do not loosen the pin (here or in pyproject.toml) without migrating the imports; update BOTH files together when deps change.
+- `pyproject.toml` — `[project]` deps (runtime) + `[dependency-groups]` dev (tooling) for the workspace-root uv workspace (`nexus-common` is a `{ workspace = true }` source; `[tool.uv] package = false` because this is an app, not an importable package), plus tool config. Ruff targets py314 with line length 88; mypy is `strict = true` (server.py carries a few `# type: ignore[list-item]` comments to satisfy it); pytest config sets `pythonpath = ["."]` so tests can `import server` from any invocation directory.
 - `Dockerfile` — multi-stage build. The build context must be the workspace parent directory (it copies `nexus-a2a/requirements.txt` and `nexus-common/`), which is how `../nexus-stack/docker-compose.yml` invokes it (`context: ..`). Final image: `python:3.14-slim`, non-root `appuser`, curl-based HEALTHCHECK against `/.well-known/agent-card.json`, `PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc` (wiped on start), CMD runs gunicorn with 1 uvicorn worker bound to `0.0.0.0:8001`.
 - `.dockerignore` — keeps `venv/`, caches, `.env`, and `.git` out of the image build context.
 - `README.md` — human-facing architecture explanation; documents the JSON-RPC endpoint as `POST /` and refers readers here for agent-facing detail.
 - `CHANGELOG.md` — brief history; titled "Nexus Weather (A2A)" (the repo's former name). Mentions a "client template" that no longer exists in this repo.
 - `.gitignore` — venv, caches, `.env`.
-- `venv/` (untracked, gitignored) — local virtualenv created with `python3 -m venv venv` and populated from `requirements.txt` (which pulls in `a2a-sdk 0.3.25`, test deps, and the editable `nexus-common`). If its shebangs ever go stale (e.g. after moving the repo), just delete and recreate it.
 - `.mypy_cache/`, `.ruff_cache/`, `tests/__pycache__/` — tool caches, ignore.
+
+There is no per-service `venv/` anymore (removed 2026-07-04): the local environment is the shared `.venv/` at the workspace root, managed by `uv sync` against the root `pyproject.toml`/`uv.lock`.
 
 ## Subdirectories
 
@@ -36,23 +37,22 @@ make up          # builds and starts all services including a2a-agent on :8001
 make logs        # tail logs
 ```
 
-Local, without Docker (requires the `nexus-common` sibling checkout):
+Local, without Docker (uses the uv workspace at the repo root — one `uv sync` there serves all four Python projects):
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-a2a
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt   # includes the a2a-sdk[http-server]==0.3.25 pin
-python server.py                  # serves http://localhost:8001
+cd /Users/jyates/Repositories/nexus && uv sync   # once; creates the shared root .venv
+cd nexus-a2a
+uv run python server.py           # serves http://localhost:8001
 curl http://localhost:8001/.well-known/agent-card.json   # discovery card
 ```
 
-Tests, lint, types (from this repo's root — tests import `server` as a top-level module):
+Tests, lint, types (from this directory; `uv run` resolves the workspace env automatically — add `--no-sync` to skip the resolution check, which is how `../nexus-stack/Makefile` runs it):
 
 ```bash
-PYTHONPATH=. venv/bin/python -m pytest tests/   # this is how ../nexus-stack/Makefile runs it
-venv/bin/python -m ruff check .
-venv/bin/python -m ruff format .
-venv/bin/python -m mypy server.py
+uv run pytest tests/
+uv run ruff check .
+uv run ruff format .
+uv run mypy server.py
 ```
 
 ## Caution / do not modify without checking consumers

@@ -25,10 +25,10 @@ Loading gotcha: `load_agents_from_module` walks and imports/reloads every module
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-orchestrator
-./venv/bin/python -m pytest tests/test_initialization.py tests/test_orchestrator.py
+uv run pytest tests/test_initialization.py tests/test_orchestrator.py
 ```
 
-`tests/test_initialization.py` asserts the multi-URL fallback naming scheme (`mcp_agent_0`, `a2a_agent_1`, ...); `tests/test_a2a_discovery.py` covers card-derived naming, URL normalization, and the unreachable-endpoint skip. LLM routing quality is measured separately with `./venv/bin/python main.py evals` (needs a real API key).
+`tests/test_initialization.py` asserts the multi-URL fallback naming scheme (`mcp_agent_0`, `a2a_agent_1`, ...); `tests/test_a2a_discovery.py` covers card-derived naming, URL normalization, and the unreachable-endpoint skip. LLM routing quality is measured separately with `uv run python main.py evals` (needs a real API key).
 
 ## Caution
 

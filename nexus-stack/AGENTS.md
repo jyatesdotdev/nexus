@@ -46,9 +46,10 @@ because the compose build contexts point at the parent directory (`..`).
 - `Makefile` — the intended entry point for everything (see "How to run" below). Gotchas:
   `build` first runs `npm install && npm run build` in `../nexus-ui` because the UI
   Dockerfile is nginx-only and serves a pre-built `dist/` — a bare `docker compose build`
-  fails for the frontend without that step. `test`, `lint`, and `type-check` reuse the
-  orchestrator's virtualenv (`../nexus-orchestrator/venv`) to run tools for nexus-mcp and
-  nexus-a2a as well, so that venv must exist with dev dependencies installed. `test`'s
+  fails for the frontend without that step. `test`, `lint`, and `type-check` run the
+  Python tools through the uv workspace at the repo root (since 2026-07-04): each target
+  does one `uv sync` at the root, then `uv run --no-sync` per service against the shared
+  `.venv` — no per-service virtualenvs exist anymore. `test`'s
   integration step points pytest at the mounted `/e2e_tests` directory (default
   `test_*.py` discovery), so new files in `../nexus-integration` are picked up without
   Makefile edits. `doctor` and `demo` delegate to `scripts/doctor.sh` and
@@ -59,8 +60,9 @@ because the compose build contexts point at the parent directory (`..`).
 - `scripts/doctor.sh` — preflight checks behind `make doctor`: Docker CLI + daemon, `.env`
   exists with a non-placeholder `GEMINI_API_KEY` (presence tested with `grep -q` only —
   the value is never read into a variable or printed), the external `nexus-net` network,
-  and Node/npm (needed because the UI builds on the host). Reports every problem with a
-  fix suggestion and exits nonzero if any check fails.
+  Node/npm (needed because the UI builds on the host), and uv (needed by the
+  test/lint/type-check targets). Reports every problem with a fix suggestion and exits
+  nonzero if any check fails.
 - `scripts/demo.sh` — guided demo behind `make demo`. Requires a running stack: it probes
   `http://localhost:8080/health` and exits with "run make up" guidance if down. Then an
   embedded python3 (stdlib-only) POSTs three canned prompts to `/run_sse` — MCP
@@ -110,7 +112,7 @@ subdirectory is `scripts/` (doctor.sh and demo.sh, described above).
 All commands from this directory (`/Users/jyates/Repositories/nexus/nexus-stack`):
 
 ```bash
-make doctor      # preflight: docker, .env/GEMINI_API_KEY, nexus-net, node/npm
+make doctor      # preflight: docker, .env/GEMINI_API_KEY, nexus-net, node/npm, uv
 make build       # npm-build the UI, then docker compose build all images
 make up          # create nexus-net, start infra (../nexus-dev-infra), start app stack
 make demo        # guided scripted conversation (MCP, A2A, local tool) — needs a running stack

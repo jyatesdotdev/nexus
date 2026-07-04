@@ -1,13 +1,18 @@
+# EDUCATIONAL NOTE-adjacent: hatchling replaced setuptools as the build backend
+# on 2026-07-04 because its editable installs use a plain .pth path entry that
+# mypy can follow. setuptools' PEP 660 editable installs go through an import
+# hook that mypy cannot traverse, which would have made the new py.typed marker
+# invisible to the consuming services' strict type-checks.
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "nexus-common"
 version = "0.1.0"
 description = "Shared utilities for the Nexus Multi-Agent Lab"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "opentelemetry-api",
     "opentelemetry-sdk",
@@ -19,6 +24,15 @@ dependencies = [
     "prometheus_client",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["nexus_common*"]
+# Hatchling ships every file inside the package directory, including the
+# nexus_common/py.typed marker (PEP 561) that tells consumers' mypy runs the
+# package is typed.
+[tool.hatch.build.targets.wheel]
+packages = ["nexus_common"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.mypy]
+strict = true

@@ -48,10 +48,10 @@ def bootstrap_fastapi_service(service_name: str, app: Any) -> None:
         service_name: The name used in traces and metrics (e.g. 'orchestrator').
         app: The FastAPI application instance.
     """
-    from typing import Dict
-
-    @app.get("/health")
-    async def health() -> Dict[str, str]:
+    # `app` is deliberately Any (works for any FastAPI instance), so the
+    # decorator is untyped to mypy.
+    @app.get("/health")  # type: ignore[untyped-decorator]
+    async def health() -> dict[str, str]:
         return {"status": "ok"}
 
     setup_telemetry(service_name=service_name, app=app, app_type="fastapi")

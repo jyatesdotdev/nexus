@@ -1,3 +1,4 @@
+# Manual mirror of the [project] dependencies in pyproject.toml, kept for the Dockerfile and CI installs — update BOTH files when deps change (local dev uses the uv workspace instead).
 mcp[sse]
 uvicorn
 starlette

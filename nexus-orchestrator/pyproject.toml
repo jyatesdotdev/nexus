@@ -1,5 +1,46 @@
+[project]
+name = "nexus-orchestrator"
+version = "0.1.0"
+description = "Google ADK root-agent orchestrator for the Nexus Multi-Agent Lab"
+requires-python = ">=3.14"
+dependencies = [
+    "google-adk[otel-gcp]>=1.27.2",
+    "google-genai>=1.68.0",
+    "pydantic>=2.0.0",
+    "python-dotenv",
+    "mcp[sse]",
+    "a2a-sdk>=0.3.25",
+    "uvicorn",
+    "fastapi",
+    "httpx",
+    "gunicorn",
+    "click",
+    "redis>=5.0.0",
+    "asyncpg>=0.30.0",
+    "pgvector>=0.3.0",
+    "nexus-common",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "mypy",
+]
+
+# This is an application, not a library: nothing installs it as a distribution,
+# so uv manages its dependencies without building/installing the project itself
+# (tests/conftest.py puts the service dir on sys.path for `import orchestrator`).
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+nexus-common = { workspace = true }
+
 [tool.ruff]
-target-version = "py310"
+target-version = "py314"
+line-length = 88
 
 [tool.mypy]
 strict = true

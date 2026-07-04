@@ -1,5 +1,9 @@
 # Changelog - Nexus Directory (MCP)
 
+## [Tooling] - 2026-07-04
+- **uv workspace:** Runtime deps moved into `pyproject.toml` `[project]` with dev tooling in `[dependency-groups]`; `nexus-common` is now a `{ workspace = true }` source. The per-service `venv/` is gone — `uv sync` at the workspace root creates the shared `.venv`, and `uv run pytest|ruff|mypy|alembic` replaces the venv-bin invocations. `requirements.txt`/`requirements-dev.txt` stay as hand-kept mirrors for the Dockerfile and CI (header comments document the sync rule).
+- **Typing:** Removed the `nexus_common.*` `ignore_missing_imports` mypy override — nexus-common now ships a `py.typed` marker, so strict mypy follows its real types. `mypy .` remains clean.
+
 ## [Fixes & Hardening] - 2026-07-03
 - **Migrations:** Rewrote the initial Alembic revision (`668e2bd0edd6`) as a true baseline that creates the `users` table, so `alembic upgrade head` now works on a fresh database; enabled `render_as_batch=True` in `alembic/env.py` for SQLite compatibility. Existing databases created by the server's `create_all()` should be marked current with `alembic stamp head`.
 - **Typing:** `search_directory` optional parameters are now `str | None`; added return annotations and `sqlmodel.col()` usage; the repo now passes `mypy --strict` (mypy added to `requirements-dev.txt`).

@@ -46,7 +46,7 @@ Quick reference for languages, frameworks, quality rules, and commands. For proj
 ### Python
 
 - Formatter/linter: `ruff` (line-length 88)
-- Ruff targets: py314 (nexus-mcp, nexus-a2a), py310 (nexus-orchestrator)
+- Ruff target: py314 in all four Python projects (`requires-python = ">=3.14"` everywhere)
 - Extended ruff rules (nexus-mcp): isort (I), pyupgrade (UP), bugbear (B), bandit (S), pathlib (PTH), tryceratops (TRY)
 - S101 (assert) suppressed in test files
 - Type checking: `mypy --strict` in all Python services
@@ -66,16 +66,20 @@ Quick reference for languages, frameworks, quality rules, and commands. For proj
 
 ## Commands
 
-### Per-service Python (run from service directory)
+### Python (uv workspace, since 2026-07-04)
+
+One uv workspace at the repo root replaces the per-service venv ritual. `uv sync` there creates a single shared `.venv` (and maintains the committed `uv.lock`); each service's pyproject declares its deps, with `nexus-common` as a `{ workspace = true }` editable source.
 
 ```bash
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-ruff check .
-ruff format .
-mypy .
-pytest
+uv sync              # from the workspace root, once (and after dep changes)
+cd <service>         # then run tools through the workspace env:
+uv run pytest
+uv run ruff check .
+uv run ruff format .
+uv run mypy .
 ```
+
+Docker and CI do NOT use uv: they pip-install each service's `requirements.txt`, which is a hand-maintained mirror of that service's pyproject deps — update both files together (see the header comment in each requirements.txt). To compare the mirror against the lock, `uv export --project <service> --no-hashes --no-emit-workspace` prints the locked requirement set for that service (review only — the mirrors deliberately keep loose pins).
 
 ### Frontend (run from nexus-ui/)
 

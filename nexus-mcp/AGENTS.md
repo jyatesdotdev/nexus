@@ -65,14 +65,20 @@ is enforced with Ruff (config in pyproject.toml); Python target is 3.14.
   Running `docker build .` from inside this repo fails. Normally the image is
   built and run via `../nexus-stack/docker-compose.yml`, which also bind-mounts
   this repo into the container at `/app`.
-- `requirements.txt` — runtime deps (mcp[sse], uvicorn, starlette, sqlmodel,
-  alembic, psycopg2-binary) plus `-e ../nexus-common`. The sibling checkout at
-  `../nexus-common` is required for install to succeed.
-- `requirements-dev.txt` — pytest, pytest-asyncio, ruff, mypy, httpx. Mypy runs
-  strict (`strict = true` in pyproject.toml, with an override treating the
-  untyped `nexus_common` package as ignorable); `./venv/bin/mypy .` is clean.
-- `pyproject.toml` — Ruff config (line length 88, py314, extra rule sets I/UP/B/
-  S/PTH/TRY; S101 ignored in tests), pytest config (`testpaths = ["tests"]`,
+- `requirements.txt` — manual mirror of the pyproject runtime deps (mcp[sse],
+  uvicorn, starlette, sqlmodel, alembic, psycopg2-binary, `-e ../nexus-common`),
+  kept ONLY for the Dockerfile and CI installs; update it together with
+  pyproject.toml when deps change. Local dev uses the uv workspace instead.
+- `requirements-dev.txt` — manual mirror of the pyproject `dev` dependency
+  group (pytest, pytest-asyncio, ruff, mypy, httpx), kept for CI. Mypy runs
+  strict (`strict = true` in pyproject.toml) and is clean — nexus_common now
+  ships a `py.typed` marker, so mypy follows its real types (the old
+  `ignore_missing_imports` override for `nexus_common.*` is gone).
+- `pyproject.toml` — `[project]` runtime deps + `[dependency-groups]` dev for
+  the workspace-root uv workspace (`nexus-common` is a `{ workspace = true }`
+  source; `[tool.uv] package = false` because this is an app, not an importable
+  package), plus tool config: Ruff (line length 88, py314, extra rule sets
+  I/UP/B/S/PTH/TRY; S101 ignored in tests), pytest (`testpaths = ["tests"]`,
   `pythonpath = "."`, strict markers), mypy strict.
 - `README.md` — human-facing overview. Refreshed 2026-07: documents the
   `delete_user` tool and the `../nexus-common` dependency, and its Docker
@@ -82,19 +88,20 @@ is enforced with Ruff (config in pyproject.toml); Python target is 3.14.
   changes.
 - `.gitignore` / `.dockerignore` — exclude venvs, caches, and `*.db` from the
   repo and the Docker image.
-- `venv/` — local virtualenv, gitignored. Recreated 2026-07 at this repo's
-  current path, so `./venv/bin/pip`, `./venv/bin/pytest`, `./venv/bin/mypy`,
-  `./venv/bin/alembic` etc. all work directly.
 - `.idea/`, `.pytest_cache/` — IDE and cache directories; ignore.
+
+There is no per-service `venv/` anymore (removed 2026-07-04): the local
+environment is the shared `.venv/` at the workspace root, managed by `uv sync`
+against the root `pyproject.toml`/`uv.lock`.
 
 ## How to run and test
 
-Fresh local setup (from this directory):
+Fresh local setup (one `uv sync` at the workspace root serves all four Python
+projects):
 
 ```bash
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt -r requirements-dev.txt  # needs ../nexus-common to exist
-./venv/bin/python server.py                            # serves MCP SSE on :8000
+cd .. && uv sync && cd nexus-mcp   # once; creates the shared root .venv
+uv run python server.py            # serves MCP SSE on :8000
 ```
 
 `alembic upgrade head` on a fresh database works (verified 2026-07) and creates
@@ -102,18 +109,18 @@ the same schema as the server's startup `create_all`; it is optional because
 the server creates its own schema on startup. For an existing `create_all`-made
 database, run `alembic stamp head` instead (see alembic/AGENTS.md).
 
-Tests (must be run from this repo root):
+Tests (from this directory):
 
 ```bash
-./venv/bin/python -m pytest
+uv run pytest
 ```
 
 Lint/format/type-check:
 
 ```bash
-./venv/bin/python -m ruff format .
-./venv/bin/python -m ruff check --fix .
-./venv/bin/mypy .
+uv run ruff format .
+uv run ruff check --fix .
+uv run mypy .
 ```
 
 Full stack: `../nexus-stack` (docker compose; this service is `mcp-server`).

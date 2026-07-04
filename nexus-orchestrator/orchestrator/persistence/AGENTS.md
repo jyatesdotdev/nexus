@@ -17,7 +17,7 @@ SQLAlchemy is not listed in `requirements.txt`; it comes in transitively via `go
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-orchestrator
-./venv/bin/python -m pytest tests/test_redis_services.py tests/test_postgres_services.py tests/test_database_session_service.py
+uv run pytest tests/test_redis_services.py tests/test_postgres_services.py tests/test_database_session_service.py
 ```
 
 All tests mock the Redis client / SQLAlchemy engine; no infrastructure needed. For a live run, nexus-stack's docker-compose provides Redis and Postgres and sets `PERSISTENCE_BACKEND` accordingly.

@@ -14,10 +14,10 @@ Registration wiring: `orchestrator/app.py` does `from . import adapters`, and `_
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-orchestrator
-./venv/bin/python -m pytest tests/test_ollama_adapter.py
+uv run pytest tests/test_ollama_adapter.py
 ```
 
-Tests mock `httpx.AsyncClient`; no Ollama server is needed. To try the adapter for real: run `ollama serve` with a pulled model, set `AGENT_MODEL=ollama/llama3`, then `./venv/bin/python main.py chat "hi"`.
+Tests mock `httpx.AsyncClient`; no Ollama server is needed. To try the adapter for real: run `ollama serve` with a pulled model, set `AGENT_MODEL=ollama/llama3`, then `uv run python main.py chat "hi"`.
 
 ## Caution
 

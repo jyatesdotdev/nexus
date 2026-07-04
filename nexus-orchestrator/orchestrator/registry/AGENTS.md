@@ -18,7 +18,7 @@ There is no dedicated test file for the registry; it is exercised indirectly:
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-orchestrator
-./venv/bin/python -m pytest tests/test_initialization.py tests/test_orchestrator.py
+uv run pytest tests/test_initialization.py tests/test_orchestrator.py
 ```
 
 ## Caution

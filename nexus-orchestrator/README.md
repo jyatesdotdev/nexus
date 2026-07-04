@@ -97,13 +97,13 @@ Nexus supports **Identity Propagation**. The UI sends a mock JWT token which the
 The Orchestrator can be run in two primary modes: using a local model via Ollama for development and privacy, or using provider-based models like Google Gemini for cloud deployments.
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.14+ and [uv](https://docs.astral.sh/uv/) (the workspace root defines a shared uv workspace)
 - A `.env` file for environment variables (see below).
 
 ### Installation
 ```bash
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
+# One-time: sync the shared uv workspace from the repo root
+cd .. && uv sync && cd nexus-orchestrator
 ```
 
 ### Execution Environments & Configuration
@@ -167,17 +167,17 @@ REVIEWER_ENFORCEMENT=false
 
 ### CLI Mode (One-off Prompt)
 ```bash
-./venv/bin/python main.py chat "How's the weather in London and what's the system uptime?"
+uv run python main.py chat "How's the weather in London and what's the system uptime?"
 ```
 
 ### Interactive CLI Mode
 ```bash
-./venv/bin/python main.py chat
+uv run python main.py chat
 ```
 
 ### Server Mode (for Frontend Integration)
 ```bash
-./venv/bin/python main.py serve
+uv run python main.py serve
 ```
 The server will start on `http://0.0.0.0:8080` (configurable via `--port` option).
 

@@ -1,3 +1,4 @@
+# Manual mirror of the [dependency-groups] dev list in pyproject.toml, kept for CI installs — update BOTH files when dev deps change (local dev uses the uv workspace instead).
 pytest
 pytest-asyncio
 ruff

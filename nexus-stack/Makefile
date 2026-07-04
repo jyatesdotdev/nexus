@@ -44,9 +44,13 @@ demo:
 test:
 	@echo "🧪 Running Unit Tests..."
 	# EDUCATIONAL NOTE: We run unit tests for all microservices to ensure individual component integrity.
-	cd ../nexus-orchestrator && PYTHONPATH=. ./venv/bin/pytest tests/
-	cd ../nexus-mcp && PYTHONPATH=. ../nexus-orchestrator/venv/bin/python -m pytest tests/
-	cd ../nexus-a2a && PYTHONPATH=. ../nexus-orchestrator/venv/bin/python -m pytest tests/
+	# One `uv sync` at the workspace root materializes a single shared .venv for
+	# all four Python projects; `--no-sync` on the per-service runs then reuses it
+	# instead of re-resolving each service's subset of the environment.
+	cd .. && uv sync
+	cd ../nexus-orchestrator && uv run --no-sync pytest tests/
+	cd ../nexus-mcp && uv run --no-sync pytest tests/
+	cd ../nexus-a2a && uv run --no-sync pytest tests/
 	cd ../nexus-ui && npm test -- --run
 
 	@echo "🧪 Running Integration Tests..."
@@ -63,17 +67,17 @@ test-e2e: up
 lint:
 	@echo "🧹 Running Linters (Ruff & ESLint)..."
 	# EDUCATIONAL NOTE: Consistent styling and bug prevention via static analysis.
-	cd ../nexus-orchestrator && ./venv/bin/ruff check .
-	cd ../nexus-mcp && ../nexus-orchestrator/venv/bin/python -m ruff check .
-	cd ../nexus-a2a && ../nexus-orchestrator/venv/bin/python -m ruff check .
+	cd .. && uv sync
+	cd .. && uv run --no-sync ruff check nexus-a2a nexus-common nexus-mcp nexus-orchestrator
 	cd ../nexus-ui && npm run lint
 
 type-check:
 	@echo "⌨️ Running Type Checkers (Mypy & TSC)..."
 	# EDUCATIONAL NOTE: Enforcing static types reduces runtime errors and improves documentation.
-	cd ../nexus-orchestrator && ./venv/bin/mypy .
-	cd ../nexus-mcp && ../nexus-orchestrator/venv/bin/python -m mypy .
-	cd ../nexus-a2a && ../nexus-orchestrator/venv/bin/python -m mypy .
+	cd .. && uv sync
+	cd ../nexus-orchestrator && uv run --no-sync mypy .
+	cd ../nexus-mcp && uv run --no-sync mypy .
+	cd ../nexus-a2a && uv run --no-sync mypy .
 	cd ../nexus-ui && npm run type-check
 
 chat:

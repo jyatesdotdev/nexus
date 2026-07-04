@@ -45,14 +45,14 @@ Diana Prince).
 From the repo root (`/Users/jyates/Repositories/nexus/nexus-mcp`):
 
 ```bash
-./venv/bin/python -m pytest            # all tests
-./venv/bin/python -m pytest tests/test_server.py -k search -v
+uv run pytest            # all tests
+uv run pytest tests/test_server.py -k search -v
 ```
 
-Requirements: `requirements.txt` and `requirements-dev.txt` installed, which
-includes the editable sibling package `../../nexus-common` (server.py imports
-`nexus_common`; collection fails with ModuleNotFoundError without it). The venv
-was recreated 2026-07, so `./venv/bin/pytest` also works directly.
+Requirements: the uv workspace synced at the repo root (`cd ../.. && uv sync`),
+which installs the editable sibling package `nexus-common` as a workspace
+source (server.py imports `nexus_common`; collection fails with
+ModuleNotFoundError without it).
 
 ## Caution / do not modify
 

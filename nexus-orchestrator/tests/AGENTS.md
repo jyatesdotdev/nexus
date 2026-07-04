@@ -1,6 +1,6 @@
 # tests/ — unit test suite
 
-Pytest suite for the Nexus orchestrator (the ADK root agent in `../orchestrator/`). Hard rule for this suite: 100% isolation — no test may hit a real LLM API, Ollama, Redis, Postgres, Prometheus, or any network endpoint. Everything external is mocked with `unittest.mock` (`patch`, `AsyncMock`, `MagicMock`). LLM behavior quality is NOT tested here; that is done separately by the evals command (`./venv/bin/python main.py evals`, which does hit the real model).
+Pytest suite for the Nexus orchestrator (the ADK root agent in `../orchestrator/`). Hard rule for this suite: 100% isolation — no test may hit a real LLM API, Ollama, Redis, Postgres, Prometheus, or any network endpoint. Everything external is mocked with `unittest.mock` (`patch`, `AsyncMock`, `MagicMock`). LLM behavior quality is NOT tested here; that is done separately by the evals command (`uv run python main.py evals`, which does hit the real model).
 
 Configuration comes from `../pytest.ini`: `asyncio_mode = strict`, so every async test function must be decorated with `@pytest.mark.asyncio` or it will be skipped/error. Several files prepend the repo root to `sys.path` manually (`sys.path.append(os.path.join(os.path.dirname(__file__), ".."))`) because the project is not installed as a package — run pytest from the repo root so imports resolve.
 
@@ -25,9 +25,9 @@ Import-time gotcha: `orchestrator/app.py` builds the root agent and persistence 
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-orchestrator
-./venv/bin/python -m pytest tests/                       # whole suite
-./venv/bin/python -m pytest tests/test_tools.py -v       # one file
-./venv/bin/python -m pytest tests/ -k "redis"            # by keyword
+uv run pytest tests/                       # whole suite
+uv run pytest tests/test_tools.py -v       # one file
+uv run pytest tests/ -k "redis"            # by keyword
 ```
 
 No `.env`, API key, or running services are required. Expected state as of 2026-07-04: all 41 tests pass.
