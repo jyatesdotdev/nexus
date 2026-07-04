@@ -1,0 +1,49 @@
+rules:
+  - id: nexus-missing-educational-note
+    patterns:
+      - pattern-regex: '\A' # Match start of file
+      - pattern-not-regex: ".*EDUCATIONAL NOTE:.*"
+    message: "Nexus Standard Violation: Every architectural file must contain an '# EDUCATIONAL NOTE:' explaining the 'Why' behind the implementation."
+    languages: [python, ts, js, dockerfile, yaml]
+    severity: ERROR
+    paths:
+      include:
+        - "nexus-orchestrator/**"
+        - "nexus-mcp/**"
+        - "nexus-a2a/**"
+        - "nexus-ui/**"
+        - "nexus-integration/**"
+        - "nexus-stack/**"
+      exclude:
+        - "**/node_modules/**"
+        - "**/venv/**"
+        - "**/.venv/**"
+        - "**/dist/**"
+        - "**/build/**"
+        - "**/tests/**"
+        - "**/e2e_tests/**"
+        - "**/.git/**"
+        - "CHANGELOG.md"
+        - "TODO.md"
+        - "package-lock.json"
+        - "yarn.lock"
+
+  - id: nexus-test-isolation-violation
+    patterns:
+      - pattern-either:
+          - pattern-regex: 'https://api\.google\.com/.*'
+          - pattern-regex: 'https://api\.open-meteo\.com/.*'
+    message: "Nexus Standard Violation: Tests must be isolated. Do not call live external APIs. Use mocking instead."
+    languages: [python, ts, js]
+    severity: ERROR
+    paths:
+      include:
+        - "nexus-orchestrator/**/test_*.py"
+        - "nexus-orchestrator/**/*test.py"
+        - "nexus-ui/**/*.test.ts"
+        - "nexus-ui/**/*.spec.ts"
+        - "nexus-integration/**"
+      exclude:
+        - "**/node_modules/**"
+        - "**/venv/**"
+        - "**/.venv/**"

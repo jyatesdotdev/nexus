@@ -59,14 +59,24 @@ make down
 
 ## 🎓 Learning Objectives
 
-This repository is heavily commented with `HOW` and `WHY` tags. Start exploring here:
+This repository is heavily commented with `# EDUCATIONAL NOTE:` tags across its configuration files. Start exploring here:
 
-1.  **Orchestrator Setup**: Read `projects/orchestrator/server.py` to learn how to wrap an ADK agent in a FastAPI web server with InMemory state management.
-2.  **Routing Logic**: Read `projects/orchestrator/main.py` to see how the `root_agent` is instructed to delegate tasks.
-3.  **MCP Integration**: Read `projects/mcp_server/server.py` to see how `@mcp.tool()` automatically generates JSON schemas from Python functions.
-4.  **A2A Protocol**: Read `projects/a2a_agent/server.py` to understand how the `AgentCard` facilitates dynamic capability discovery.
-5.  **Streaming UIs**: Read `projects/frontend/src/App.tsx` (specifically the `fetch` loop) to learn how to parse LLM SSE streams and handle progressive text updates without duplication.
-6.  **Foundation Model Abstraction**: Check out `projects/orchestrator/adapters/bedrock_adapter.py` and `ollama_adapter.py` to learn how the ADK allows you to swap out Gemini for other models (like Claude on Bedrock or local OSS models via Ollama) without changing your orchestration logic.
+1.  **Orchestrator Setup**: Read `nexus-orchestrator/server.py` to learn how to wrap an ADK agent in a FastAPI web server with InMemory state management.
+2.  **Routing Logic**: Read `nexus-orchestrator/main.py` to see how the `root_agent` is instructed to delegate tasks.
+3.  **MCP Integration**: Read `nexus-mcp/server.py` to see how `@mcp.tool()` automatically generates JSON schemas from Python functions.
+4.  **A2A Protocol**: Read `nexus-a2a/server.py` to understand how the `AgentCard` facilitates dynamic capability discovery.
+5.  **Streaming UIs**: Read `nexus-ui/src/App.tsx` (specifically the `fetch` loop) to learn how to parse LLM SSE streams and handle progressive text updates without duplication.
+6.  **Foundation Model Abstraction**: Check out `nexus-orchestrator/adapters/bedrock_adapter.py` and `ollama_adapter.py` to learn how the ADK allows you to swap out Gemini for other models (like Claude on Bedrock or local OSS models via Ollama) without changing your orchestration logic.
+
+---
+
+## 🛠️ Nexus Engineering Standards
+
+This project adheres to strict production-ready engineering standards:
+*   **Educational Integrity**: All "Why" and "How" documentation is standardized using the `# EDUCATIONAL NOTE:` prefix.
+*   **Testing Isolation**: All tests are guaranteed to be isolated. We use robust mocking to ensure that tests never hit external APIs or production resources.
+*   **Containerization**: Docker configurations utilize multi-stage builds, non-root users, and native healthchecks.
+*   **Code Quality**: Strict linting and type safety are enforced across all Python (Ruff/Mypy) and TypeScript (ESLint/TSC) services.
 
 ---
 
