@@ -1,5 +1,10 @@
 # Changelog - Nexus Directory (MCP)
 
+## [Advanced Features] - 2026-03-27
+- **Tools:** Added `delete_user` tool to demonstrate sensitive operations.
+- **Orchestration:** Integrated with the Orchestrator's Human-in-the-Loop (HITL) pattern via `require_confirmation`.
+- **Security:** Supported identity propagation for scoped operations.
+
 ## [Nexus Branding Update] - 2026-03-24
 - **Documentation:** Extensively updated **README.md** with project branding, architectural details, and key technologies.
 - **Project Structure:** Standardized project name as **Nexus HR Directory (MCP)**.

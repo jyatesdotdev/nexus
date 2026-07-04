@@ -1,13 +1,15 @@
 # CONTEXTLIB: A standard library module for utilities involving context managers.
-# WHY: Useful for making safer and cleaner code blocks.
-from mcp.server.fastmcp import FastMCP
+# EDUCATIONAL NOTE: Useful for making safer and cleaner code blocks.
+from mcp.server.fastmcp import FastMCP, Context
+from nexus_common import bootstrap_starlette_service, IdentityContext
 from sqlmodel import Session, select
+
 
 from database import User, engine, init_db
 
 # Initialize FastMCP server
 # HOW: FastMCP is a high-level framework for building MCP (Model Context Protocol) servers.
-# WHY: It abstracts away the low-level JSON-RPC communication, allowing you to
+# EDUCATIONAL NOTE: It abstracts away the low-level JSON-RPC communication, allowing you to
 # focus on the actual tools and resources you want to expose to an AI agent.
 mcp = FastMCP("HR Directory Server", host="0.0.0.0", port=8000)  # noqa: S104
 
@@ -18,57 +20,93 @@ mcp = FastMCP("HR Directory Server", host="0.0.0.0", port=8000)  # noqa: S104
 # ==============================================================================
 init_db()
 
+# EDUCATIONAL NOTE: Shared Infrastructure
+# FastMCP uses Starlette under the hood. By instrumenting its internal app,
+# we gain visibility into all incoming MCP requests.
+app = mcp.sse_app()
 
-# TOOL DECORATOR: @mcp.tool() registers a function as an MCP tool.
-# HOW: The AI orchestrator will see this function's name, docstring, and arguments.
-# WHY: This is the primary way to give an LLM "agency" or the ability to
-# perform actions in the real world (like querying a database).
+bootstrap_starlette_service(service_name="mcp-server", app=app)
+
+# ==============================================================================
+# Helpers
+# ==============================================================================
+
+def _get_identity_from_context(ctx: Context) -> IdentityContext:
+    """
+    Extracts user identity from the MCP context headers.
+    [EDUCATIONAL NOTE] Abstracting context parsing keeps the tool logic focused.
+    """
+    auth_header = None
+    if hasattr(ctx, "request_context") and hasattr(ctx.request_context, "headers"):
+        auth_header = ctx.request_context.headers.get("Authorization")
+    return IdentityContext(auth_header)
+
+def _is_admin(user_id: str) -> bool:
+    """
+    Determines if a user has administrative privileges.
+    [EDUCATIONAL NOTE] Separation of authorization from business logic.
+    """
+    # mock_user_123 is our admin in this lab
+    return user_id == "mock_user_123"
+
+# ==============================================================================
+# MCP Tools
+# ==============================================================================
+
 @mcp.tool()
 def search_directory(department: str = None, name: str = None) -> str:
     """
     Searches the corporate HR directory. You can search by department or partial name.
     Returns a formatted list of employee records.
     """
-    # ==============================================================================
-    # EDUCATIONAL NOTE: Using the ORM Session
-    # Using `with Session(engine) as session:` handles the opening and closing of
-    # the database connection automatically.
-    # By using SQLModel's `select` statements instead of raw string formatting
-    # (e.g., f"SELECT * FROM users WHERE name='{name}'"), we completely eliminate
-    # the risk of SQL Injection attacks.
-    # ==============================================================================
     with Session(engine) as session:
         statement = select(User)
 
-        # Dynamically build the query based on provided arguments
         if department:
             statement = statement.where(User.department == department)
         if name:
-            # Using `.contains()` results in a secure 'LIKE %name%' query
             statement = statement.where(User.name.contains(name))
 
-        # Execute the query
         results = session.exec(statement).all()
 
         if not results:
             return "No employees found matching the criteria."
 
-        # Format the results into a human-readable string for the LLM
         formatted = ["HR Directory Results:"]
         for user in results:
             formatted.append(
                 f"- Name: {user.name}, Dept: {user.department}, Email: {user.email}"
             )
 
-        # STRING JOIN: Joins a list of strings into one string with newlines.
-        # WHY: More efficient than repeatedly using '+=' on strings.
         return "\n".join(formatted)
 
+@mcp.tool()
+def delete_user(email: str, ctx: Context) -> str:
+    """
+    Deletes an employee from the corporate HR directory by their email address.
+    This is a highly sensitive operation requiring 'admin' privileges.
+    """
+    # 1. Identity Propagation
+    identity = _get_identity_from_context(ctx)
+    print(f"MCP HR Agent: Delete request for {email} from {identity.user_id}")
+
+    # 2. Authorization Check
+    if not _is_admin(identity.user_id):
+        return f"PERMISSION DENIED: User '{identity.user_id}' is not authorized to perform deletions. Please contact an administrator."
+
+    # 3. Business Logic (Execution)
+    with Session(engine) as session:
+        statement = select(User).where(User.email == email)
+        results = session.exec(statement).all()
+        if not results:
+            return f"User with email {email} not found."
+        
+        for user in results:
+            session.delete(user)
+        session.commit()
+        return f"Successfully deleted user {email}."
 
 # RESOURCE DECORATOR: @mcp.resource() exposes static or semi-static data.
-# HOW: Resources are identified by a URI (e.g., 'system://status').
-# WHY: Useful for providing reference material, logs, or status info that the agent
-# can "read" rather than "execute" as a tool.
 @mcp.resource("system://status")
 def get_system_status() -> str:
     """
@@ -78,8 +116,5 @@ def get_system_status() -> str:
 
 
 if __name__ == "__main__":
-    # TRANSPORT: MCP supports different communication methods.
-    # HOW: 'sse' stands for Server-Sent Events, which is great for web-based clients.
-    # WHY: Choosing the right transport allows the MCP server to integrate with
-    # various frontend and orchestrator environments.
-    mcp.run(transport="sse")
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
