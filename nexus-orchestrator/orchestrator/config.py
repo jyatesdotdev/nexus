@@ -10,6 +10,9 @@ import os
 # EDUCATIONAL NOTE: [Why] This allows configuration to be external to the code. If the variable
 # isn't set in the environment, it safely falls back to the provided default.
 AGENT_MODEL = os.getenv("AGENT_MODEL", "gemini-2.5-flash")
+PERSISTENCE_BACKEND = os.getenv("PERSISTENCE_BACKEND", "in_memory")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+POSTGRES_URL = os.getenv("POSTGRES_URL", "postgresql+asyncpg://nexus:password@localhost:5432/nexus_dev")
 
 
 # PARSE LISTS: Helper to get multiple URLs from comma-separated env vars.

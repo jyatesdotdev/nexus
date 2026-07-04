@@ -30,7 +30,7 @@ class OllamaAdapter(BaseLlm):
 
     @classmethod
     def supported_models(cls) -> List[str]:
-        # REGULAR EXPRESSIONS: r"ollama/.*" is a pattern.
+        # EDUCATIONAL NOTE: r"ollama/.*" is a pattern.
         # EDUCATIONAL NOTE: [Why] This tells the ADK that any model string starting with 'ollama/'
         # should be handled by this adapter.
         return [r"ollama/.*"]

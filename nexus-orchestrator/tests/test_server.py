@@ -8,12 +8,14 @@ from typing import Any
 # Add root directory to path so we can import the orchestrator package
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from orchestrator.app import app
+from orchestrator.app import root_agent, session_service, memory_service
+from orchestrator.server import create_app_instance
 from orchestrator.config import APP_NAME
 
 from google.adk.errors.not_found_error import NotFoundError
 
-client = TestClient(app)
+app = create_app_instance(root_agent, session_service, memory_service)
+client = TestClient(app, raise_server_exceptions=False)
 
 
 def test_app_name_is_valid_identifier() -> None:
@@ -38,20 +40,21 @@ def test_system_status_endpoint(mock_get: Any, mock_head: Any) -> None:
     assert response.status_code == 200
     data = response.json()
     assert "orchestrator" in data
-    assert "mcp_servers" in data
-    assert "a2a_agents" in data
+    assert "mcp_server" in data
+    assert "a2a_agent" in data
 
 
 def test_run_sse_invalid_app() -> None:
-    # Test that it raises NotFoundError for wrong app name
-    # Note: TestClient by default raises exceptions that occur in the app
-    with pytest.raises(NotFoundError):
-        client.post(
-            "/run_sse",
-            json={
-                "app_name": "wrong_app",
-                "user_id": "test_user",
-                "session_id": "test_session",
-                "new_message": {"role": "user", "parts": [{"text": "hello"}]},
-            },
-        )
+    # Test that it returns 404 for wrong app name
+    # We must use a valid mock JWT token to pass the identity middleware
+    valid_token = "eyJ.test_user.signature"
+    response = client.post(
+        "/run_sse",
+        json={
+            "app_name": "wrong_app",
+            "user_id": valid_token,
+            "session_id": "test_session",
+            "new_message": {"role": "user", "parts": [{"text": "hello"}]},
+        },
+    )
+    assert response.status_code == 404

@@ -17,7 +17,8 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Install dependencies separately to leverage Docker layer caching
-COPY requirements.txt .
+COPY nexus-orchestrator/requirements.txt .
+COPY nexus-common /nexus-common
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
@@ -28,7 +29,8 @@ FROM python:3.14-slim
 # Runtime environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 
 WORKDIR /app
 
@@ -39,13 +41,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /nexus-common /nexus-common
 
 # Create a non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN groupadd -r appuser && useradd -m -r -g appuser appuser
+
+# Create multiproc dir and assign permissions
+RUN mkdir -p $PROMETHEUS_MULTIPROC_DIR && chown -R appuser:appuser $PROMETHEUS_MULTIPROC_DIR
 
 # Copy application source
-COPY orchestrator/ ./orchestrator/
-COPY main.py .
+COPY nexus-orchestrator/orchestrator/ ./orchestrator/
+COPY nexus-orchestrator/main.py .
 
 # Ensure the appuser owns the application files
 RUN chown -R appuser:appuser /app
@@ -56,6 +62,6 @@ EXPOSE 8080
 
 # Use Gunicorn with Uvicorn workers for production-grade concurrency
 # --bind 0.0.0.0:8080 allows external traffic
-# --workers 4 (Adjust based on CPU cores in production)
-CMD ["gunicorn", "orchestrator.app:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--access-logfile", "-", "--error-logfile", "-"]
+# --workers 1 (Adjust based on CPU cores in production)
+CMD ["/bin/sh", "-c", "rm -rf /tmp/prometheus_multiproc/* && gunicorn orchestrator.asgi:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080 --access-logfile - --error-logfile -"]
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl --fail http://localhost:8080/health || exit 1

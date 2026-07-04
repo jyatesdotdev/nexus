@@ -1,9 +1,11 @@
+import os
+import httpx
 import subprocess
 from typing import Dict, List, Optional, Protocol, runtime_checkable
 from pydantic import BaseModel, Field
 
 # ==========================================
-# 1. Pydantic Models for Structured Output
+# EDUCATIONAL NOTE: 1. Pydantic Models for Structured Output
 # ==========================================
 
 
@@ -56,7 +58,7 @@ class BashOutput(BaseModel):
 
 
 # ==========================================
-# 2. Tool Implementation with Protocol
+# EDUCATIONAL NOTE: 2. Tool Implementation with Protocol
 # ==========================================
 
 
@@ -83,7 +85,7 @@ def get_sensor_reading(sensor_id: str) -> SensorReading:
     )
 
 
-def query_prometheus_metric(query: str) -> MetricValue:
+async def query_prometheus_metric(query: str) -> MetricValue:
     """
     Executes a PromQL query against the corporate Prometheus instance.
     Args:
@@ -91,7 +93,26 @@ def query_prometheus_metric(query: str) -> MetricValue:
     Returns:
         A MetricValue object with the result and unit.
     """
-    return MetricValue(status="success", query=query, value=95.4, unit="CPU %")
+    prometheus_url = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
+    try:
+        # EDUCATIONAL NOTE: Real-time Metric Retrieval
+        # This tool now actually queries the Prometheus API instead of returning 
+        # mock data. This demonstrates how sub-agents can consume real telemetry.
+        # EDUCATIONAL NOTE: [Why] We use httpx.AsyncClient to ensure we do not block
+        # the main event loop while waiting for the network response.
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{prometheus_url}/api/v1/query", params={"query": query})
+            if resp.status_code == 200:
+                data = resp.json()
+                if data["status"] == "success" and data["data"]["result"]:
+                    # Take the first result value
+                    value = float(data["data"]["result"][0]["value"][1])
+                    return MetricValue(status="success", query=query, value=value, unit="value")
+                return MetricValue(status="success", query=query, value=0.0, unit="no_data")
+            return MetricValue(status="error", query=query, value=0.0, unit=f"HTTP_{resp.status_code}")
+    except Exception as e:
+        # Fallback to mock data for local development if Prometheus is unreachable
+        return MetricValue(status="mock", query=query, value=95.4, unit="CPU %")
 
 
 def fetch_ynab_budget(category: str) -> BudgetBalance:

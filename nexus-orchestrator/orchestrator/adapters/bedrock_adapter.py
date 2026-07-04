@@ -8,7 +8,7 @@ from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 
 
-# ADAPTER PATTERN: BedrockAdapter converts the interface of a third-party API
+# EDUCATIONAL NOTE: BedrockAdapter converts the interface of a third-party API
 # (Amazon Bedrock) into the interface expected by the ADK (BaseLlm).
 # EDUCATIONAL NOTE: [Why] This design allows the rest of the application to remain agnostic
 # of which specific LLM provider is being used.

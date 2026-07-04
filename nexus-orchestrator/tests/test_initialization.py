@@ -18,15 +18,14 @@ def test_multi_agent_initialization() -> None:
         # We need to reload the config module to pick up the new env vars
         import importlib
         import orchestrator.config
-
-        importlib.reload(orchestrator.config)
-
+        import orchestrator.agents.dynamic_agents
         import orchestrator.app
 
+        importlib.reload(orchestrator.config)
+        importlib.reload(orchestrator.agents.dynamic_agents)
         importlib.reload(orchestrator.app)
 
         from orchestrator.app import initialize_agents
-
         root_agent = initialize_agents()
 
         sub_agent_names = [agent.name for agent in root_agent.sub_agents]
@@ -49,5 +48,7 @@ def test_multi_agent_initialization() -> None:
         assert "a2a_agent_0" in sub_agent_names
         assert "a2a_agent_1" in sub_agent_names
         assert "a2a_agent_2" in sub_agent_names
+        
+        assert "reviewer_agent" in sub_agent_names
 
-        assert len(sub_agent_names) == 10
+        assert len(sub_agent_names) == 11
