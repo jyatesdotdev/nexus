@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+playwright-report/
+test-results/
+
+# Local data & secrets
+.env
+*.db
+
+# OS
+.DS_Store
