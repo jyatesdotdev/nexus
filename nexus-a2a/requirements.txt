@@ -1,0 +1,15 @@
+# EDUCATIONAL NOTE: a2a-sdk 1.x removed a2a.server.apps.jsonrpc.starlette_app,
+# which server.py imports. Pin to the 0.3.x line (with the http-server extra
+# that provides the Starlette JSON-RPC app) until the code is migrated.
+a2a-sdk[http-server]==0.3.25
+uvicorn
+starlette
+sse-starlette
+httpx
+gunicorn
+ruff
+mypy
+pytest
+pytest-asyncio
+respx
+-e ../nexus-common
