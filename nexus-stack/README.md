@@ -15,11 +15,11 @@ graph TD
     ORCH -->|A2A Protocol| A2A[Weather Sub-Agent<br>A2A SDK]
 ```
 
-### Components (`projects/`)
-*   **`orchestrator`**: The central intelligence. Runs a FastAPI web server using `AdkWebServer`. It routes incoming user requests to the appropriate sub-agent based on context and history.
-*   **`mcp_server`**: A standalone tool server. Demonstrates how to expose a local, private SQLite database (HR Directory) to the LLM without giving the LLM direct code execution or network access.
-*   **`a2a_agent`**: A standalone sub-agent. Demonstrates how to build an independent agent service (Weather Forecaster) that the orchestrator can "hire" over an HTTP network using a standardized JSON-RPC protocol.
-*   **`frontend`**: A modern, real-time React UI that connects to the orchestrator via Server-Sent Events (SSE), parsing streaming deltas to build the chat interface.
+### Components (sibling `nexus-*` directories)
+*   **`nexus-orchestrator`**: The central intelligence. Runs a FastAPI web server using `AdkWebServer`. It routes incoming user requests to the appropriate sub-agent based on context and history.
+*   **`nexus-mcp`**: A standalone tool server. Demonstrates how to expose a local, private SQLite database (HR Directory) to the LLM without giving the LLM direct code execution or network access.
+*   **`nexus-a2a`**: A standalone sub-agent. Demonstrates how to build an independent agent service (Weather Forecaster) that the orchestrator can "hire" over an HTTP network using a standardized JSON-RPC protocol.
+*   **`nexus-ui`**: A modern, real-time React UI that connects to the orchestrator via Server-Sent Events (SSE), parsing streaming deltas to build the chat interface.
 
 ---
 
@@ -27,30 +27,45 @@ graph TD
 
 ### Prerequisites
 *   Docker & Docker Compose
+*   Node.js + npm (the UI is built on the host before its image is assembled)
 *   A Gemini API Key (get one at [aistudio.google.com](https://aistudio.google.com/))
 
 ### 1. Setup Environment
-Add your API key to the root `.env` file:
-```env
-GEMINI_API_KEY=your_key_here
+Copy the documented template and add your API key:
+```bash
+cp .env.example .env
+# then edit .env and set GEMINI_API_KEY=<your real key>
 ```
+`.env.example` documents every variable the stack consumes; only `GEMINI_API_KEY` is required.
 
-### 2. Run the Stack (using Make)
-We provide a `Makefile` to simplify Docker commands.
+### 2. Preflight Check
+```bash
+make doctor
+```
+Verifies Docker (CLI + daemon), your `.env` / API key, the shared `nexus-net` network, and Node/npm — with a fix suggestion for anything missing.
 
+### 3. Run the Stack (using Make)
 ```bash
 # Build and start all services in the background
 make up
 ```
 
-### 3. Use the App
+### 4. Take the Guided Demo
+```bash
+make demo
+```
+Sends a short scripted conversation through the orchestrator — one prompt each for MCP delegation (HR directory), A2A delegation (weather agent), and a local tool (sensor reading) — printing each response plus its trace ID with a Grafana Tempo link.
+
+### 5. Use the App
 1.  **Web UI**: Open [http://localhost:5173](http://localhost:5173) in your browser.
 2.  **CLI Chat**: If you prefer the terminal:
     ```bash
     make chat
     ```
 
-### 4. Stop the Stack
+Session history is persisted to Redis by default (`PERSISTENCE_BACKEND=redis`), so conversations survive orchestrator restarts. Set `PERSISTENCE_BACKEND=in_memory` in `.env` to opt out.
+
+### 6. Stop the Stack
 ```bash
 make down
 ```

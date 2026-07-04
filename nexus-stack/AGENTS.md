@@ -48,14 +48,41 @@ because the compose build contexts point at the parent directory (`..`).
   Dockerfile is nginx-only and serves a pre-built `dist/` — a bare `docker compose build`
   fails for the frontend without that step. `test`, `lint`, and `type-check` reuse the
   orchestrator's virtualenv (`../nexus-orchestrator/venv`) to run tools for nexus-mcp and
-  nexus-a2a as well, so that venv must exist with dev dependencies installed. `clean` runs
+  nexus-a2a as well, so that venv must exist with dev dependencies installed. `test`'s
+  integration step points pytest at the mounted `/e2e_tests` directory (default
+  `test_*.py` discovery), so new files in `../nexus-integration` are picked up without
+  Makefile edits. `doctor` and `demo` delegate to `scripts/doctor.sh` and
+  `scripts/demo.sh`. `clean` runs
   `docker system prune -f` (removes ALL dangling images/containers machine-wide, not just
   Nexus ones). `verify-all` runs lint + type-check + evals first, then Semgrep and Checkov
   in Docker against the whole parent directory.
+- `scripts/doctor.sh` — preflight checks behind `make doctor`: Docker CLI + daemon, `.env`
+  exists with a non-placeholder `GEMINI_API_KEY` (presence tested with `grep -q` only —
+  the value is never read into a variable or printed), the external `nexus-net` network,
+  and Node/npm (needed because the UI builds on the host). Reports every problem with a
+  fix suggestion and exits nonzero if any check fails.
+- `scripts/demo.sh` — guided demo behind `make demo`. Requires a running stack: it probes
+  `http://localhost:8080/health` and exits with "run make up" guidance if down. Then an
+  embedded python3 (stdlib-only) POSTs three canned prompts to `/run_sse` — MCP
+  delegation ("Who works in the engineering department?"), A2A delegation (Tokyo
+  weather), and a local sensor tool — using phrasings mirrored from the orchestrator's
+  `eval_cases.py` so routing is known-good, and deliberately avoiding prompts that
+  trigger human-in-the-loop approval (they would stall a headless script). For each
+  prompt it parses the SSE stream (same partial/final delta semantics as the UI), prints
+  delegation hops, the final response, and the `X-Trace-Id` response header with a
+  Grafana Tempo explore link (gracefully notes when the header is absent). Override
+  targets with `ORCH_URL` / `GRAFANA_URL` env vars.
 - `.env` — runtime secrets/config loaded automatically by docker compose:
   `GEMINI_API_KEY` (a real key — treat as secret, never commit or paste it),
   `AGENT_MODEL`, `OLLAMA_BASE_URL`, `GOOGLE_GENAI_USE_VERTEXAI=0`. It is gitignored;
-  every fresh clone must recreate it or the orchestrator cannot call Gemini.
+  every fresh clone must recreate it (start from `.env.example`) or the orchestrator
+  cannot call Gemini.
+- `.env.example` — committed template for `.env`: every variable the stack consumes with
+  placeholder values and one-line comments, including optional overrides
+  (`GOOGLE_API_KEY`, `MCP_SERVER_URLS`, `A2A_AGENT_URLS`, `REVIEWER_ENFORCEMENT`) and a
+  comment section on UI build-time `VITE_*` variables (which Vite bakes in at
+  `make build` time and are NOT read from `.env`). Keep it in sync with
+  `docker-compose.yml` and `../nexus-orchestrator/orchestrator/config.py`.
 - `.semgrep.yaml` — custom CI/standards rules run by `make verify-all` across ALL sibling
   repos: (1) every source file (python/ts/js/dockerfile/yaml) must contain an
   `# EDUCATIONAL NOTE:` comment, excluding tests, changelogs, TODO.md, lockfiles, venvs;
@@ -68,23 +95,25 @@ because the compose build contexts point at the parent directory (`..`).
   aspirational: the actual `docker-compose.yml` builds from local source with `build:`
   directives and mounts code as volumes; there is no private registry or pinned image tag
   in use today. `make verify-all` (Semgrep + Checkov) is the part that is real.
-- `README.md` — human-facing overview and quickstart. Mostly accurate, but it still refers
-  to the pre-split `projects/` layout in one heading and to `nexus-orchestrator/server.py`
-  / `main.py` paths that have since moved under `nexus-orchestrator/orchestrator/`.
+- `README.md` — human-facing overview and quickstart (cp .env.example → make doctor →
+  make up → make demo).
 - `TODO.md` — historical task list from the original monorepo cleanup; every item is
   checked off. Keep for history; do not treat its paths (`src/`, `projects/`) as current.
 - `CHANGELOG.md` — reverse-chronological history, also predating the polyrepo split.
 - `.gitignore` — ignores `.env`, venvs, caches, `*.db`.
 
-This directory is part of the single workspace-root git repository. There are no subdirectories to document.
+This directory is part of the single workspace-root git repository. The only
+subdirectory is `scripts/` (doctor.sh and demo.sh, described above).
 
 ## How to run
 
 All commands from this directory (`/Users/jyates/Repositories/nexus/nexus-stack`):
 
 ```bash
+make doctor      # preflight: docker, .env/GEMINI_API_KEY, nexus-net, node/npm
 make build       # npm-build the UI, then docker compose build all images
 make up          # create nexus-net, start infra (../nexus-dev-infra), start app stack
+make demo        # guided scripted conversation (MCP, A2A, local tool) — needs a running stack
 make down        # stop app stack, then infra stack
 make logs        # tail all app-stack logs
 make chat        # interactive CLI chat with the orchestrator (docker compose run)

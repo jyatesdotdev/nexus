@@ -1,5 +1,13 @@
 # Changelog
 
+## [Onboarding & Demo Tooling] - 2026-07-04
+- **Onboarding:** Added `.env.example` documenting every environment variable the stack consumes (placeholders only), including optional `A2A_AGENT_URLS` / `REVIEWER_ENFORCEMENT` overrides and a note on UI build-time `VITE_*` variables.
+- **Preflight:** Added `make doctor` (`scripts/doctor.sh`) — checks Docker CLI/daemon, `.env` + non-placeholder `GEMINI_API_KEY` (presence only, value never printed), the external `nexus-net` network, and Node/npm; reports all problems with fixes and exits nonzero.
+- **Demo:** Added `make demo` (`scripts/demo.sh`) — guided scripted conversation against `/run_sse` exercising MCP delegation (HR directory), A2A delegation (weather), and a local sensor tool; prints each response and its `X-Trace-Id` with a Grafana Tempo deep link. Requires a running stack (`make up`).
+- **Persistence:** Documented that the orchestrator defaults to `PERSISTENCE_BACKEND=redis` in `docker-compose.yml` (`${PERSISTENCE_BACKEND:-redis}`), so session history survives orchestrator restarts out of the box.
+- **Testing:** `make test` now runs the integration suite via directory discovery (`pytest /e2e_tests`) instead of an explicit file list, so new `nexus-integration/test_*.py` files are picked up automatically.
+- **Docs:** README quickstart rewritten around `cp .env.example .env` → `make doctor` → `make up` → `make demo`.
+
 ## [Initial State] - 2026-03-21
 - Resolved `GEMINI_API_KEY` missing error by loading `.env` correctly.
 - Added command-line prompt support to `agent.py`.

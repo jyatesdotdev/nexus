@@ -1,4 +1,4 @@
-.PHONY: build up down test lint type-check chat logs clean verify-all
+.PHONY: build up down doctor demo test test-e2e lint type-check chat logs evals clean verify-all
 
 # EDUCATIONAL NOTE: The Makefile abstracts complex Docker Compose commands, providing 
 # a simplified interface for developers and ensuring consistent environment management.
@@ -29,6 +29,18 @@ down:
 	@echo "🛑 Stopping infrastructure services..."
 	cd ../nexus-dev-infra && docker compose down
 
+doctor:
+	@echo "🩺 Running preflight checks..."
+	# EDUCATIONAL NOTE: A preflight target catches missing prerequisites (Docker,
+	# .env, network, Node) with actionable guidance BEFORE a long 'make up' fails.
+	@bash scripts/doctor.sh
+
+demo:
+	@echo "🎬 Running guided demo conversation..."
+	# EDUCATIONAL NOTE: The demo sends canned prompts that exercise each delegation
+	# path (MCP, A2A, local tools) and prints trace IDs linked to Grafana Tempo.
+	@bash scripts/demo.sh
+
 test:
 	@echo "🧪 Running Unit Tests..."
 	# EDUCATIONAL NOTE: We run unit tests for all microservices to ensure individual component integrity.
@@ -39,7 +51,9 @@ test:
 
 	@echo "🧪 Running Integration Tests..."
 	# EDUCATIONAL NOTE: Integration tests verify that services can communicate correctly over the network.
-	docker compose run --rm -e PYTHONPATH=/app orchestrator pytest /e2e_tests/test_a2a_integration.py /e2e_tests/test_persistence_integration.py -v
+	# Pointing pytest at the mounted directory (not an explicit file list) lets its
+	# default test_*.py discovery pick up new nexus-integration tests automatically.
+	docker compose run --rm -e PYTHONPATH=/app orchestrator pytest /e2e_tests -v
 
 test-e2e: up
 	@echo "🎭 Running Playwright E2E Tests..."
