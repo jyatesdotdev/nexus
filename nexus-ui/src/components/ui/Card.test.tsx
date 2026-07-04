@@ -8,7 +8,7 @@ describe('Card Component', () => {
     const { container } = render(<Card>Card Content</Card>)
     const card = container.firstChild as HTMLElement
     expect(card).toHaveTextContent('Card Content')
-    expect(card).toHaveClass('bg-white', 'rounded-2xl', 'shadow-sm')
+    expect(card).toHaveClass('rounded-2xl', 'shadow-2xl', 'backdrop-blur-xl')
   })
 
   it('applies custom class names', () => {

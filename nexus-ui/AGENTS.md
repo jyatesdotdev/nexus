@@ -15,14 +15,16 @@ this UI as the `frontend` service).
 
 Stack: React 19, TypeScript (strict), Vite, Tailwind CSS v4 (configured in CSS,
 no tailwind.config.js), react-markdown, Vitest + React Testing Library (unit),
-Playwright (e2e), OpenTelemetry web SDK (traces + metrics). The single
-runtime-relevant environment variable is `VITE_API_BASE_URL` (orchestrator base
-URL, default `http://localhost:8080`); note Vite inlines env vars at **build**
-time, so a production bundle bakes the value in.
+Playwright (e2e), OpenTelemetry web SDK (traces + metrics). The
+runtime-relevant environment variables are `VITE_API_BASE_URL` (orchestrator
+base URL, default `http://localhost:8080`) and `VITE_OTEL_EXPORTER_URL` (OTLP
+collector base URL, default `http://localhost:4319`); note Vite inlines env
+vars at **build** time, so a production bundle bakes the values in.
 
 ## Files at this level
 
-- `package.json` — npm manifest (package name is `frontend`, not `nexus-ui`).
+- `package.json` — npm manifest (package name `nexus-ui`; note the nexus-stack
+  compose service that runs this UI is still called `frontend`).
   Scripts: `dev`, `build` (`tsc -b && vite build`), `lint`, `preview`, `test`
   (Vitest unit tests), `test:e2e`, `test:e2e:ui`, `test:e2e:report`
   (Playwright). Contains npm `overrides` pinning `@opentelemetry/*` package
@@ -55,11 +57,10 @@ time, so a production bundle bakes the value in.
   80, defines a native HEALTHCHECK (wget on `/`). In the nexus-stack compose,
   the container's port 80 is published as host port 5173.
 - `README.md` — human-facing docs (setup, SSE/delta/delegation explanations).
-  Minor staleness: it says the SSE parsing lives in `handleSend`; it is
-  actually in `sendRequest` inside `src/App.tsx`.
-- `CHANGELOG.md` — brief release notes (HITL, SSE refactor, mock JWT).
+- `CHANGELOG.md` — brief release notes (housekeeping, HITL, SSE refactor,
+  mock JWT).
 - `public/` — static assets copied verbatim into the build: `favicon.svg`
-  (used by index.html) and `icons.svg` (currently unreferenced).
+  (used by index.html).
 - `.gitignore` — standard Node/Vite ignores.
 
 ## Subdirectories

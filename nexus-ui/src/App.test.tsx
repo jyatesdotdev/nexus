@@ -21,9 +21,9 @@ describe('App', () => {
             a2a_agent: 'Online',
             a2a_api: 'Reachable'
           })
-        } as any
+        } as unknown as Response
       }
-      return { ok: true, body: null } as any
+      return { ok: true, body: null } as unknown as Response
     })
   })
 

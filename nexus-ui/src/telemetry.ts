@@ -20,8 +20,16 @@ import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 const resource = new Resource({
   [SemanticResourceAttributes.SERVICE_NAME]: 'nexus-ui',
 });
+
+// EDUCATIONAL NOTE: Configurable Collector Endpoint
+// [Why] Like VITE_API_BASE_URL, the OTLP collector URL is read from a
+// VITE_-prefixed env var so different environments can point at their own
+// collector. Vite inlines import.meta.env values at BUILD time, so a
+// production bundle bakes the value in.
+const otelExporterUrl = import.meta.env.VITE_OTEL_EXPORTER_URL || 'http://localhost:4319';
+
 const traceExporter = new OTLPTraceExporter({
-  url: 'http://localhost:4319/v1/traces',
+  url: `${otelExporterUrl}/v1/traces`,
 });
 
 const tracerProvider = new WebTracerProvider({
@@ -40,7 +48,7 @@ tracerProvider.register({
 // 2. METRICS (Prometheus)
 // ----------------------------------------------------------------------
 const metricExporter = new OTLPMetricExporter({
-  url: 'http://localhost:4319/v1/metrics',
+  url: `${otelExporterUrl}/v1/metrics`,
 });
 
 const meterProvider = new MeterProvider({

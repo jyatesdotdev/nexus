@@ -25,7 +25,7 @@ export interface Message {
    * This allows the UI to render bespoke components (e.g., a WeatherWidget)
    * instead of plain text if a payload is provided.
    */
-  data?: any
+  data?: StructuredData
 
   /**
    * The '?' makes this property optional.
@@ -38,6 +38,26 @@ export interface Message {
    */
   actionId?: string
 }
+
+/**
+ * EDUCATIONAL NOTE: Typed Generative UI Payloads
+ * WHY: The agent can attach structured data (metadata.structured_data) to a
+ * message so the UI renders a bespoke widget instead of plain text. Using a
+ * discriminated union keyed on 'type' (instead of 'any') lets TypeScript
+ * narrow the payload once the UI checks the discriminator, while staying
+ * open for future widget types (add new members to the union).
+ */
+export interface WeatherForecastData {
+  type: 'weather_forecast'
+  city: string
+  temp_f?: string | number
+  temp_c?: string | number
+  description?: string
+  humidity?: string | number
+  wind_speed?: string | number
+}
+
+export type StructuredData = WeatherForecastData
 
 /**
  * Represents the health status of various backend services.

@@ -51,9 +51,6 @@ There is no router, no global state library, and no context provider.
     `function_response` part with name `adk_request_confirmation`, the
     actionId, and `response: { confirmed: true }`. The name and shape are an
     ADK contract; do not rename.
-  - Gotcha: the initial `status` state sets `a2a_agent: 'Online'` while all
-    other services start `'Offline'` — an inconsistency that the first poll
-    overwrites within ~1s.
 - `App.test.tsx` — Vitest + React Testing Library tests for App. Replaces
   `globalThis.fetch` with `vi.fn()` so no real network is touched; returns a
   mocked all-online `/system-status` payload. Follow this pattern for any new
@@ -68,13 +65,13 @@ There is no router, no global state library, and no context provider.
   contract.
 - `telemetry.ts` — OpenTelemetry setup, imported for side effects by main.tsx.
   Registers a WebTracerProvider and MeterProvider with OTLP/HTTP exporters
-  pointed at a hardcoded collector `http://localhost:4319/v1/traces` and
-  `/v1/metrics` (the nexus-dev-infra observability stack); service name
-  `nexus-ui`. Fetch instrumentation propagates W3C trace headers only to URLs
-  matching `http://localhost:8080` (the orchestrator). Exports a `meter` for
-  custom metrics (currently unused elsewhere). Requires `zone.js` (imported at
-  the top) for async context propagation. The collector URL is NOT
-  env-configurable — a known limitation.
+  pointed at the collector base URL from `VITE_OTEL_EXPORTER_URL` (default
+  `http://localhost:4319`, the nexus-dev-infra observability stack), appending
+  `/v1/traces` and `/v1/metrics`; service name `nexus-ui`. Fetch
+  instrumentation propagates W3C trace headers only to URLs matching
+  `http://localhost:8080` (the orchestrator). Exports a `meter` for custom
+  metrics (currently unused elsewhere). Requires `zone.js` (imported at the
+  top) for async context propagation.
 - `setupTests.ts` — global Vitest setup (wired via `test.setupFiles` in
   `../vite.config.ts`): imports `@testing-library/jest-dom` matchers and mocks
   `HTMLElement.prototype.scrollIntoView`, which jsdom does not implement and
@@ -84,11 +81,6 @@ There is no router, no global state library, and no context provider.
   `@plugin "@tailwindcss/typography"` (this is where the Tailwind typography
   plugin used by markdown `prose` classes is enabled — there is no
   tailwind.config.js). Sets the dark slate page background.
-- `App.css` — leftover Vite template stylesheet, NOT imported by anything.
-  Safe to ignore; candidate for deletion.
-- `assets/` — `hero.png`, `react.svg`, `vite.svg`; none are referenced by any
-  source file. Leftover template/demo assets; candidate for deletion. No
-  AGENTS.md there.
 
 ## Subdirectories
 

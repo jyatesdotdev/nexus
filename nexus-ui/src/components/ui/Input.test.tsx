@@ -8,7 +8,7 @@ describe('Input Component', () => {
     render(<Input placeholder="Enter text" />)
     const input = screen.getByPlaceholderText('Enter text')
     expect(input).toBeInTheDocument()
-    expect(input).toHaveClass('bg-neutral-100')
+    expect(input).toHaveClass('rounded-xl', 'flex-grow')
   })
 
   it('handles value changes', () => {

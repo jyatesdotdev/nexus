@@ -32,7 +32,7 @@ export default function App() {
     orchestrator: 'Offline',
     mcp_server: 'Offline',
     mcp_db: 'Offline',
-    a2a_agent: 'Online',
+    a2a_agent: 'Offline',
     a2a_api: 'Offline'
   })
   
