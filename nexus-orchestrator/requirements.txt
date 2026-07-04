@@ -4,7 +4,7 @@ google-genai>=1.68.0
 pydantic>=2.0.0
 python-dotenv
 mcp[sse]
-a2a-sdk>=0.3.25
+a2a-sdk==0.3.25
 uvicorn
 fastapi
 httpx
@@ -17,4 +17,5 @@ mypy
 redis>=5.0.0
 asyncpg>=0.30.0
 pgvector>=0.3.0
+sqlalchemy[asyncio]>=2.0.0
 -e ../nexus-common

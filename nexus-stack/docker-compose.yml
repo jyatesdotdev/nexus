@@ -68,7 +68,11 @@ services:
       context: ..
       dockerfile: nexus-orchestrator/Dockerfile
     ports:
-      - "8080:8080"
+      # EDUCATIONAL NOTE: host port is overridable because 8080 is a popular
+      # port — dev machines often already have something listening there, and
+      # the VM port-forward then fails silently while in-container healthchecks
+      # stay green. Set ORCHESTRATOR_HOST_PORT in .env to relocate.
+      - "${ORCHESTRATOR_HOST_PORT:-8080}:8080"
     volumes:
       - ../nexus-orchestrator:/app
       - ../nexus-integration:/e2e_tests
@@ -96,6 +100,13 @@ services:
       - OTEL_METRICS_EXPORTER=none
       - OTEL_LOGS_EXPORTER=none
       - OTEL_SERVICE_NAME=orchestrator
+      # EDUCATIONAL NOTE: Disables OpenSSL's ARM crypto-instruction fast paths.
+      # Under virtualized/emulated ARM CPUs (e.g. colima/QEMU on Apple Silicon),
+      # the vCPU can advertise AES/SHA instructions it cannot actually execute,
+      # and the `cryptography` wheel (pulled in via google-adk) dies with SIGILL
+      # at import. Zero-cost correctness fix for a learning lab; remove on
+      # bare-metal ARM/x86 hosts if TLS throughput ever matters.
+      - OPENSSL_armcap=0
     networks:
       - nexus-net
     healthcheck:
@@ -112,7 +123,9 @@ services:
       context: ..
       dockerfile: nexus-ui/Dockerfile
     ports:
-      - "5173:80"
+      # Host port overridable for the same reason as ORCHESTRATOR_HOST_PORT:
+      # 5173 is Vite's default dev port and often already taken on dev machines.
+      - "${FRONTEND_HOST_PORT:-5173}:80"
     networks:
       - nexus-net
     depends_on:

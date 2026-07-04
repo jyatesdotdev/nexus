@@ -14,6 +14,13 @@
 
 set -euo pipefail
 
+# Respect a relocated orchestrator host port (ORCHESTRATOR_HOST_PORT in .env);
+# only that one non-secret var is read from the file.
+ENV_FILE="$(dirname "$0")/../.env"
+if [ -z "${ORCH_URL:-}" ] && [ -f "$ENV_FILE" ]; then
+  _port="$(grep -E '^ORCHESTRATOR_HOST_PORT=' "$ENV_FILE" | tail -1 | cut -d= -f2 | tr -dc '0-9')"
+  [ -n "$_port" ] && ORCH_URL="http://localhost:${_port}"
+fi
 ORCH_URL="${ORCH_URL:-http://localhost:8080}"
 GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 

@@ -9,7 +9,9 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv",
     "mcp[sse]",
-    "a2a-sdk>=0.3.25",
+    # Pinned: matches nexus-a2a's pin and the workspace lock. a2a-sdk 1.x moved
+# a2a.client.ClientEvent, which breaks google-adk's RemoteA2aAgent import.
+"a2a-sdk==0.3.25",
     "uvicorn",
     "fastapi",
     "httpx",
@@ -18,6 +20,9 @@ dependencies = [
     "redis>=5.0.0",
     "asyncpg>=0.30.0",
     "pgvector>=0.3.0",
+    # Direct import of the persistence layer; do NOT rely on it arriving
+    # transitively via google-adk (adk 2.x dropped it and the container broke).
+    "sqlalchemy[asyncio]>=2.0.0",
     "nexus-common",
 ]
 
