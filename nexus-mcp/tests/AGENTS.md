@@ -18,7 +18,7 @@ Diana Prince).
 
 ## Files at this level
 
-- `test_server.py` — the whole suite (7 tests). Structure and gotchas:
+- `test_server.py` — the whole suite (11 tests). Structure and gotchas:
   - The first ~25 lines create a `tempfile.mkstemp(suffix=".db")` database and
     set `os.environ["DATABASE_URL"]` before the `from database import ...` /
     `from server import ...` lines. This ordering is load-bearing; the imports
@@ -30,10 +30,15 @@ Diana Prince).
     return the original callables, so no MCP client/transport is involved.
   - `test_init_db` asserts the user count is exactly 4, so tests that insert or
     delete rows can break other tests depending on execution order. If you add
-    mutating tests, reset state or use fixtures rather than relying on order.
-  - The `delete_user` tool (in `../server.py`) is currently NOT covered; it
-    needs a mocked MCP `Context` carrying an `Authorization` header to exercise
-    the admin check (`user_id == "mock_user_123"`).
+    mutating tests, leave the seeded 4-user dataset untouched (the existing
+    `delete_user` admin test inserts its own throwaway row and deletes it) or
+    use fixtures rather than relying on order.
+  - The `delete_user` tool is covered (added 2026-07): admin-allowed deletion,
+    admin not-found, non-admin denial, and missing-header (anonymous) denial.
+    The MCP `Context` is mocked with a `SimpleNamespace` duck-type built by the
+    `_mock_context()` helper — `server._get_identity_from_context` only reads
+    `ctx.request_context.headers`, so no MCP transport is involved. The admin
+    identity is the bearer token `mock_user_123`.
 
 ## How to run
 
@@ -46,9 +51,8 @@ From the repo root (`/Users/jyates/Repositories/nexus/nexus-mcp`):
 
 Requirements: `requirements.txt` and `requirements-dev.txt` installed, which
 includes the editable sibling package `../../nexus-common` (server.py imports
-`nexus_common`; collection fails with ModuleNotFoundError without it). Note the
-venv's bin scripts other than `python` have stale shebangs — invoke tools via
-`./venv/bin/python -m ...`.
+`nexus_common`; collection fails with ModuleNotFoundError without it). The venv
+was recreated 2026-07, so `./venv/bin/pytest` also works directly.
 
 ## Caution / do not modify
 

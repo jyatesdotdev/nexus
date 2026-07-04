@@ -8,8 +8,11 @@ This server allows LLMs (Large Language Models) to query employee information st
 
 - **Tools:**
   - `search_directory(department, name)`: Query the HR database for employee records including name, department, and email. Supports partial name matching.
+  - `delete_user(email)`: Delete an employee record by email. This is a deliberately sensitive operation used to demonstrate identity propagation and authorization: the caller's identity is parsed from the `Authorization: Bearer` header (mock JWT via `nexus_common.IdentityContext`), and only the mock admin `mock_user_123` is permitted. The orchestrator's Human-in-the-Loop confirmation demo depends on this gate.
 - **Resources:**
   - `system://status`: A static resource that confirms the server's operational status and database connectivity.
+
+This server depends on the sibling repository [`../nexus-common`](../nexus-common) (installed editable via `requirements.txt`) for the `/health` endpoint, OpenTelemetry/Prometheus bootstrap, and mock identity parsing. A checkout of `nexus-common` next to this repo is required for installation and Docker builds.
 
 ## 🛠️ Key Technologies
 
@@ -34,10 +37,18 @@ This server allows LLMs (Large Language Models) to query employee information st
 
 ### Using Docker (Recommended)
 
-1.  **Build the image:**
+The normal way to build and run this service is through the full stack in
+[`../nexus-stack/docker-compose.yml`](../nexus-stack) (service name `mcp-server`).
+
+To build the image standalone, the build context must be the **workspace parent
+directory** (not this repo), because the Dockerfile copies both `nexus-mcp/` and
+the sibling `nexus-common/`:
+
+1.  **Build the image (from the workspace parent):**
     ```bash
-    docker build -t nexus-hr-directory .
+    cd .. && docker build -f nexus-mcp/Dockerfile -t nexus-hr-directory .
     ```
+    (Running `docker build .` from inside this repo does not work.)
 2.  **Run the container:**
     ```bash
     docker run -e DATABASE_URL="sqlite:///hr.db" -p 8000:8000 nexus-hr-directory
@@ -45,14 +56,21 @@ This server allows LLMs (Large Language Models) to query employee information st
 
 ### Manual Execution
 
-1.  **Set up environment:**
+1.  **Set up environment** (requires the sibling `../nexus-common` checkout):
     ```bash
     python3 -m venv venv && source venv/bin/activate
-    pip install -r requirements.txt
+    pip install -r requirements.txt -r requirements-dev.txt
     ```
-2.  **Apply migrations:**
+2.  **Apply migrations** (optional):
     ```bash
     alembic upgrade head
+    ```
+    The server also runs `SQLModel.metadata.create_all()` on startup, so a fresh
+    database works without this step. If you have an existing database whose
+    schema was created by the server rather than by Alembic, mark it as current
+    instead of re-running the migration:
+    ```bash
+    alembic stamp head
     ```
 3.  **Start the server:**
     ```bash
@@ -86,8 +104,8 @@ pytest
 - `database.py`: SQLModel models and database configuration.
 - `alembic/`: Database migration scripts.
 - `tests/`: Automated test suite.
-- `Dockerfile`: Optimized multi-stage container configuration.
-- `GEMINI.md`: Foundational context and engineering standards.
+- `Dockerfile`: Optimized multi-stage container configuration (build context is the workspace parent).
+- `AGENTS.md` (per directory): Foundational context and engineering standards for contributors and agents.
 
 
 ## 📏 Nexus Engineering Standards
@@ -113,5 +131,5 @@ This project adheres to the **Nexus Engineering Standards**, prioritizing educat
 - **Healthchecks:** Every service must define a native `HEALTHCHECK` in its Dockerfile and/or `docker-compose.yml`.
 
 ### 5. Documentation
-- **Living Reference:** `GEMINI.md` and `README.md` must be kept in sync with the project's actual state.
+- **Living Reference:** the `AGENTS.md` files and `README.md` must be kept in sync with the project's actual state.
 - **Architectural Diagrams:** Use Mermaid.js or clear text-based diagrams to visualize service interactions.

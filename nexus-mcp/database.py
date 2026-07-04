@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
@@ -47,7 +48,7 @@ connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite")
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 
-def get_session():
+def get_session() -> Generator[Session]:
     """
     Generator that provides a database session.
     It can be used as a dependency in FastAPI or simply with context managers.
@@ -56,7 +57,7 @@ def get_session():
         yield session
 
 
-def init_db():
+def init_db() -> None:
     """
     Initializes the database and populates it with mock data if it's empty.
 

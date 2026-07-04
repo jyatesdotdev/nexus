@@ -38,22 +38,25 @@ is enforced with Ruff (config in pyproject.toml); Python target is 3.14.
   directory). `init_db()` runs `SQLModel.metadata.create_all(engine)` and seeds
   4 mock employees (Alice Smith, Bob Jones, Charlie Brown, Diana Prince) only if
   the table is empty. Schema changes: edit the `User` model AND create an Alembic
-  revision (see `alembic/AGENTS.md`) — but be aware the runtime schema actually
-  comes from `create_all`, not from migrations (see the caution in
-  alembic/AGENTS.md).
+  revision (see `alembic/AGENTS.md`). The runtime schema is created by whichever
+  runs first — `create_all` at server startup or `alembic upgrade head` — and
+  both produce the identical schema (verified 2026-07); see alembic/AGENTS.md
+  for how they coexist.
 - `hr.db` — the generated local SQLite database. It is NOT git-tracked
   (`.gitignore` has `*.db`) and must stay untracked. It is fully regenerable:
   delete it and start the server (or import `server.py`); `init_db()` recreates
-  the schema and reseeds the 4 mock users. It also contains an empty
-  `alembic_version` table left behind by a failed `alembic upgrade` attempt;
-  this is harmless. Do not commit it and do not rely on any data in it.
+  the schema and reseeds the 4 mock users. Its `alembic_version` table is
+  stamped at head (`668e2bd0edd6`); if you regenerate the file via `create_all`,
+  re-run `alembic stamp head`. Do not commit it and do not rely on any data in
+  it.
 - `alembic.ini` — Alembic configuration. The `sqlalchemy.url` placeholder in this
   file is ignored: `alembic/env.py` overrides it with `DATABASE_URL` from
   `database.py`. `prepend_sys_path = .` means Alembic commands must be run from
   this repo root so `database.py` is importable.
 - `alembic/` — migration environment and version scripts. See
-  `alembic/AGENTS.md`. Important: the existing migration chain cannot build the
-  schema from scratch and fails on SQLite; details there.
+  `alembic/AGENTS.md`. As of 2026-07 the chain builds the schema from scratch
+  (`alembic upgrade head` works on a fresh database) and env.py enables batch
+  mode for SQLite.
 - `tests/` — pytest suite. See `tests/AGENTS.md`.
 - `Dockerfile` — multi-stage build, non-root `appuser`, socket healthcheck,
   exposes 8000. The build context must be the WORKSPACE PARENT directory, not
@@ -65,25 +68,23 @@ is enforced with Ruff (config in pyproject.toml); Python target is 3.14.
 - `requirements.txt` — runtime deps (mcp[sse], uvicorn, starlette, sqlmodel,
   alembic, psycopg2-binary) plus `-e ../nexus-common`. The sibling checkout at
   `../nexus-common` is required for install to succeed.
-- `requirements-dev.txt` — pytest, pytest-asyncio, ruff, httpx. Note: mypy is
-  configured (`strict = true` in pyproject.toml) but not listed here; install it
-  separately if you want to run type checks.
+- `requirements-dev.txt` — pytest, pytest-asyncio, ruff, mypy, httpx. Mypy runs
+  strict (`strict = true` in pyproject.toml, with an override treating the
+  untyped `nexus_common` package as ignorable); `./venv/bin/mypy .` is clean.
 - `pyproject.toml` — Ruff config (line length 88, py314, extra rule sets I/UP/B/
   S/PTH/TRY; S101 ignored in tests), pytest config (`testpaths = ["tests"]`,
   `pythonpath = "."`, strict markers), mypy strict.
-- `README.md` — human-facing overview. Known inaccuracies as of 2026-07: it does
-  not mention the `delete_user` tool, its "alembic upgrade head" setup step fails
-  on a fresh database, and its `docker build .` instruction does not work from
-  this directory (context must be the parent). Prefer this AGENTS.md for facts.
+- `README.md` — human-facing overview. Refreshed 2026-07: documents the
+  `delete_user` tool and the `../nexus-common` dependency, and its Docker
+  instructions use the workspace-parent build context. Keep it in sync with
+  this AGENTS.md when behavior changes.
 - `CHANGELOG.md` — hand-maintained changelog; add an entry for user-visible
   changes.
 - `.gitignore` / `.dockerignore` — exclude venvs, caches, and `*.db` from the
   repo and the Docker image.
-- `venv/` — local virtualenv, gitignored. Its bin scripts have stale shebangs
-  from before the repo was moved (they point at `.../nexus-directory/...`), so
-  `./venv/bin/pip` and `./venv/bin/pytest` fail with "bad interpreter". Use
-  `./venv/bin/python -m pip ...` / `./venv/bin/python -m pytest`, or recreate
-  the venv.
+- `venv/` — local virtualenv, gitignored. Recreated 2026-07 at this repo's
+  current path, so `./venv/bin/pip`, `./venv/bin/pytest`, `./venv/bin/mypy`,
+  `./venv/bin/alembic` etc. all work directly.
 - `.idea/`, `.pytest_cache/` — IDE and cache directories; ignore.
 
 ## How to run and test
@@ -92,13 +93,14 @@ Fresh local setup (from this directory):
 
 ```bash
 python3 -m venv venv
-./venv/bin/python -m pip install -r requirements.txt   # needs ../nexus-common to exist
-./venv/bin/python -m pip install -r requirements-dev.txt
+./venv/bin/pip install -r requirements.txt -r requirements-dev.txt  # needs ../nexus-common to exist
 ./venv/bin/python server.py                            # serves MCP SSE on :8000
 ```
 
-Do NOT run `alembic upgrade head` as a setup step; it fails on a fresh database
-(see alembic/AGENTS.md). The server creates its own schema on startup.
+`alembic upgrade head` on a fresh database works (verified 2026-07) and creates
+the same schema as the server's startup `create_all`; it is optional because
+the server creates its own schema on startup. For an existing `create_all`-made
+database, run `alembic stamp head` instead (see alembic/AGENTS.md).
 
 Tests (must be run from this repo root):
 
@@ -106,11 +108,12 @@ Tests (must be run from this repo root):
 ./venv/bin/python -m pytest
 ```
 
-Lint/format:
+Lint/format/type-check:
 
 ```bash
 ./venv/bin/python -m ruff format .
 ./venv/bin/python -m ruff check --fix .
+./venv/bin/mypy .
 ```
 
 Full stack: `../nexus-stack` (docker compose; this service is `mcp-server`).
@@ -119,7 +122,8 @@ Full stack: `../nexus-stack` (docker compose; this service is `mcp-server`).
 
 - Never commit `hr.db` or any `*.db` file.
 - Do not remove the module-level `init_db()` call in `server.py`; fresh
-  deployments depend on it because the migration chain cannot create the schema.
+  deployments depend on it for schema creation and mock-data seeding (Alembic
+  migrations create the schema but never seed data).
 - Importing `server.py` or `database.py` binds the engine immediately, so any
   test or script must set `DATABASE_URL` BEFORE the import or it will touch
   `hr.db`.
@@ -127,5 +131,6 @@ Full stack: `../nexus-stack` (docker compose; this service is `mcp-server`).
   fixture used by the orchestrator's confirmation flow.
 - Keep `-e ../nexus-common` in requirements.txt; the sibling-directory layout is
   assumed by both local installs and the Dockerfile.
-- Do not edit the existing migration `alembic/versions/668e2bd0edd6_*.py`
-  (already published as history); add new revisions instead.
+- Do not edit the existing migration `alembic/versions/668e2bd0edd6_*.py`; it
+  was deliberately rewritten 2026-07 as a from-scratch baseline (CREATE TABLE
+  users) and is now settled history. Add new revisions instead.

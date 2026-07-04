@@ -1,9 +1,9 @@
-# CONTEXTLIB: A standard library module for utilities involving context managers.
-# EDUCATIONAL NOTE: Useful for making safer and cleaner code blocks.
-from mcp.server.fastmcp import FastMCP, Context
-from nexus_common import bootstrap_starlette_service, IdentityContext
-from sqlmodel import Session, select
-
+# FASTMCP IMPORTS: FastMCP is the server framework; Context gives tool functions
+# access to per-request data such as the incoming HTTP headers (used for auth).
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.session import ServerSession
+from nexus_common import IdentityContext, bootstrap_starlette_service
+from sqlmodel import Session, col, select
 
 from database import User, engine, init_db
 
@@ -31,7 +31,8 @@ bootstrap_starlette_service(service_name="mcp-server", app=app)
 # Helpers
 # ==============================================================================
 
-def _get_identity_from_context(ctx: Context) -> IdentityContext:
+
+def _get_identity_from_context(ctx: Context[ServerSession, None]) -> IdentityContext:
     """
     Extracts user identity from the MCP context headers.
     [EDUCATIONAL NOTE] Abstracting context parsing keeps the tool logic focused.
@@ -41,6 +42,7 @@ def _get_identity_from_context(ctx: Context) -> IdentityContext:
         auth_header = ctx.request_context.headers.get("Authorization")
     return IdentityContext(auth_header)
 
+
 def _is_admin(user_id: str) -> bool:
     """
     Determines if a user has administrative privileges.
@@ -49,12 +51,14 @@ def _is_admin(user_id: str) -> bool:
     # mock_user_123 is our admin in this lab
     return user_id == "mock_user_123"
 
+
 # ==============================================================================
 # MCP Tools
 # ==============================================================================
 
+
 @mcp.tool()
-def search_directory(department: str = None, name: str = None) -> str:
+def search_directory(department: str | None = None, name: str | None = None) -> str:
     """
     Searches the corporate HR directory. You can search by department or partial name.
     Returns a formatted list of employee records.
@@ -65,7 +69,7 @@ def search_directory(department: str = None, name: str = None) -> str:
         if department:
             statement = statement.where(User.department == department)
         if name:
-            statement = statement.where(User.name.contains(name))
+            statement = statement.where(col(User.name).contains(name))
 
         results = session.exec(statement).all()
 
@@ -80,8 +84,9 @@ def search_directory(department: str = None, name: str = None) -> str:
 
         return "\n".join(formatted)
 
+
 @mcp.tool()
-def delete_user(email: str, ctx: Context) -> str:
+def delete_user(email: str, ctx: Context[ServerSession, None]) -> str:
     """
     Deletes an employee from the corporate HR directory by their email address.
     This is a highly sensitive operation requiring 'admin' privileges.
@@ -100,11 +105,12 @@ def delete_user(email: str, ctx: Context) -> str:
         results = session.exec(statement).all()
         if not results:
             return f"User with email {email} not found."
-        
+
         for user in results:
             session.delete(user)
         session.commit()
         return f"Successfully deleted user {email}."
+
 
 # RESOURCE DECORATOR: @mcp.resource() exposes static or semi-static data.
 @mcp.resource("system://status")
@@ -117,4 +123,5 @@ def get_system_status() -> str:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104

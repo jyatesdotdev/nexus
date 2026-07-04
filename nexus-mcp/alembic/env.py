@@ -15,7 +15,9 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from database import DATABASE_URL, SQLModel  # noqa: E402
+from sqlmodel import SQLModel  # noqa: E402
+
+from database import DATABASE_URL  # noqa: E402
 
 target_metadata = SQLModel.metadata
 
@@ -47,6 +49,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -67,7 +70,20 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # ======================================================================
+        # EDUCATIONAL NOTE: SQLite and Batch Mode
+        # SQLite has very limited ALTER TABLE support: it cannot ALTER COLUMN
+        # types or nullability in place. `render_as_batch=True` makes Alembic
+        # emit "batch" migrations, which recreate the table (copy data into a
+        # new table, drop the old one, rename) whenever an unsupported ALTER
+        # is required. This is a no-op for databases like PostgreSQL that
+        # support ALTER natively, so it is safe to enable unconditionally.
+        # ======================================================================
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
+        )
 
         with context.begin_transaction():
             context.run_migrations()
