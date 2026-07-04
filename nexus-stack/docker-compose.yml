@@ -1,0 +1,120 @@
+# EDUCATIONAL NOTE: This Docker Compose file orchestrates a distributed multi-agent 
+# architecture. Each service resides in a separate repository to ensure modularity 
+# and independent scalability.
+
+networks:
+  nexus-net:
+    external: true
+
+services:
+  mcp-server:
+    # EDUCATIONAL NOTE: The Model Context Protocol (MCP) server provides a secure 
+    # bridge between the LLM and private data sources (like SQLite).
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: nexus-mcp/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../nexus-mcp:/app
+      - ../nexus-common:/nexus-common
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4319
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_SERVICE_NAME=mcp-server
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/sse\")' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  a2a-agent:
+    # EDUCATIONAL NOTE: The A2A Agent is a standalone microservice that implements 
+    # the Agent-to-Agent protocol for dynamic capability discovery.
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: nexus-a2a/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ../nexus-a2a:/app
+      - ../nexus-common:/nexus-common
+    environment:
+      - A2A_HOST=0.0.0.0
+      - A2A_PORT=8001
+      - A2A_PUBLIC_URL=http://a2a-agent:8001
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4319
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_SERVICE_NAME=a2a-agent
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/.well-known/agent-card.json\")' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  orchestrator:
+    # EDUCATIONAL NOTE: The Orchestrator is the central hub, using Google ADK 
+    # to delegate tasks to sub-agents (MCP or A2A).
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: nexus-orchestrator/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../nexus-orchestrator:/app
+      - ../nexus-integration:/e2e_tests
+      - ../nexus-common:/nexus-common
+    stdin_open: true # EDUCATIONAL NOTE: Stdin/TTY allows interactive CLI sessions.
+    tty: true       
+    depends_on:
+      # EDUCATIONAL NOTE: service_healthy ensures the orchestrator doesn't attempt 
+      # to connect to sub-agents before they are ready.
+      mcp-server:
+        condition: service_healthy
+      a2a-agent:
+        condition: service_healthy
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AGENT_MODEL=${AGENT_MODEL:-gemini-1.5-flash}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
+      - MCP_SERVER_URL=http://mcp-server:8000/sse
+      - A2A_AGENT_URL=http://a2a-agent:8001/.well-known/agent-card.json
+      - PERSISTENCE_BACKEND=${PERSISTENCE_BACKEND:-redis}
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql+asyncpg://nexus:password@postgres:5432/nexus_dev
+      - PROMETHEUS_URL=http://prometheus:9090
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4319
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_SERVICE_NAME=orchestrator
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/health\")' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    # EDUCATIONAL NOTE: A React/Vite UI that consumes SSE streams from the 
+    # orchestrator for a real-time chat experience.
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: nexus-ui/Dockerfile
+    ports:
+      - "5173:80"
+    networks:
+      - nexus-net
+    depends_on:
+      orchestrator:
+        condition: service_healthy
