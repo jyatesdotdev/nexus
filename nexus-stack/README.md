@@ -111,6 +111,18 @@ You can run this lab entirely locally using [Ollama](https://ollama.com/).
 
 ---
 
+## 🧬 Adding Your Own Agent
+
+Want to add a new specialized sub-agent to the system? Scaffold one:
+
+```bash
+make new-agent NAME=stock-ticker        # PORT is optional (defaults to the next free 800x)
+```
+
+This copies `templates/a2a-service/` — a complete A2A sub-agent modeled on `nexus-a2a` (agent card, two-phase streaming, `/health` + telemetry, passing tests, Dockerfile, docs) — to `../nexus-stock-ticker` and prints a numbered checklist of the remaining wiring: the ready-to-paste `docker-compose.yml` snippet, the orchestrator's `A2A_AGENT_URLS` entry (the orchestrator discovers A2A agents dynamically from that list — each agent card it can fetch becomes a registered sub-agent, named from the card), the Prometheus scrape target, and the uv workspace member. Then implement your capability at the `TODO` in the new `server.py`.
+
+---
+
 ## 🧪 Testing
 
 The orchestrator includes a suite of integration tests, including an "LLM-as-a-judge" pattern.

@@ -63,6 +63,28 @@ because the compose build contexts point at the parent directory (`..`).
   Node/npm (needed because the UI builds on the host), and uv (needed by the
   test/lint/type-check targets). Reports every problem with a fix suggestion and exits
   nonzero if any check fails.
+- `scripts/new-agent.sh` — scaffold generator behind `make new-agent NAME=<name>`
+  (PORT optional; defaults to the first port ≥ 8002 not already mentioned in
+  `docker-compose.yml` or `../nexus-dev-infra/prometheus.yml`). Copies
+  `templates/a2a-service/` to `../nexus-<name>` (refusing to overwrite an existing
+  directory), substitutes the placeholder tokens (`__SERVICE_NAME__`, `__SERVICE_SNAKE__`,
+  `__SERVICE_UPPER__`, `__SERVICE_TITLE__`, `__PORT__`, `__DATE__` — table in
+  `templates/AGENTS.md`), then prints a numbered next-steps checklist instead of editing
+  shared files: a ready-to-paste compose service snippet (healthcheck, nexus-net,
+  nexus-common mount), the `A2A_AGENT_URLS` line for the orchestrator (which discovers
+  A2A agents dynamically — one sub-agent per reachable card, named from the card's
+  `name`), the Prometheus scrape target, and the root uv-workspace member + `uv sync`.
+  NAME must match `^[a-z][a-z0-9-]*$`.
+- `templates/` — template trees consumed by `scripts/new-agent.sh`; currently one,
+  `a2a-service/`, a complete A2A sub-agent closely modeled on the real `../nexus-a2a`
+  (AgentExecutor with two-phase streaming, AgentCard, `/health` + telemetry via
+  nexus-common, a pure `process_query()` domain function with the learner TODO,
+  multi-stage non-root Dockerfile, respx-mocked tests that pass out of the box, per-level
+  docs). See `templates/AGENTS.md` for the token table and rules. Template `.py` files
+  and the Dockerfile live under `nexus-stack/**`, so the Semgrep educational-note rule
+  scans them — they carry the notes and comply (a deliberate choice over extending the
+  exclusion list: templates are example code learners read); template `tests/` fall under
+  the existing `**/tests/**` exclusion.
 - `scripts/demo.sh` — guided demo behind `make demo`. Requires a running stack: it probes
   `http://localhost:8080/health` and exits with "run make up" guidance if down. Then an
   embedded python3 (stdlib-only) POSTs three canned prompts to `/run_sse` — MCP
@@ -104,8 +126,9 @@ because the compose build contexts point at the parent directory (`..`).
 - `CHANGELOG.md` — reverse-chronological history, also predating the polyrepo split.
 - `.gitignore` — ignores `.env`, venvs, caches, `*.db`.
 
-This directory is part of the single workspace-root git repository. The only
-subdirectory is `scripts/` (doctor.sh and demo.sh, described above).
+This directory is part of the single workspace-root git repository. Subdirectories:
+`scripts/` (doctor.sh, demo.sh, new-agent.sh — described above) and `templates/`
+(service scaffolds for `make new-agent`; has its own AGENTS.md).
 
 ## How to run
 
@@ -126,16 +149,20 @@ make type-check  # mypy (python services) + tsc (ui)
 make evals       # LLM routing evals via the orchestrator CLI (needs valid GEMINI_API_KEY)
 make verify-all  # lint + type-check + evals + Semgrep standards + Checkov docker checks
 make clean       # make down + docker system prune -f (affects non-Nexus images too)
+make new-agent NAME=<name> [PORT=<port>]  # scaffold ../nexus-<name> from templates/a2a-service
 ```
 
 After `make up`: UI at http://localhost:5173, orchestrator API at http://localhost:8080
 (`/health`, `/system-status`), MCP at http://localhost:8000, A2A at http://localhost:8001,
 Grafana at http://localhost:3000 (admin/admin).
 
-Adding a new service to the stack: give it a `/health` endpoint (use `nexus-common`
-bootstrap helpers), add it here with a healthcheck on `nexus-net`, add a scrape target in
-`../nexus-dev-infra/prometheus.yml`, and include `# EDUCATIONAL NOTE:` comments to satisfy
-Semgrep.
+Adding a new A2A sub-agent to the stack: run `make new-agent NAME=<name>` and follow the
+printed checklist — it scaffolds a complete service (protocol code, `/health` via
+`nexus-common`, `# EDUCATIONAL NOTE:` comments, tests, Dockerfile, docs) and tells you
+exactly what to paste into `docker-compose.yml`, the orchestrator's `A2A_AGENT_URLS`,
+`../nexus-dev-infra/prometheus.yml`, and the root uv workspace. For non-A2A services, do
+those same steps by hand: `/health` endpoint (nexus-common bootstrap helpers), compose
+entry with healthcheck on `nexus-net`, Prometheus scrape target, educational notes.
 
 ## Caution / do not modify
 

@@ -1,4 +1,4 @@
-.PHONY: build up down doctor demo test test-e2e lint type-check chat logs evals clean verify-all
+.PHONY: build up down doctor demo test test-e2e lint type-check chat logs evals clean verify-all new-agent
 
 # EDUCATIONAL NOTE: The Makefile abstracts complex Docker Compose commands, providing 
 # a simplified interface for developers and ensuring consistent environment management.
@@ -116,3 +116,11 @@ clean: down
 	@echo "🧹 Cleaning up containers and dangling images..."
 	# EDUCATIONAL NOTE: System prune is used to prevent storage bloat from unused build layers.
 	docker system prune -f
+
+new-agent:
+	# EDUCATIONAL NOTE: Turns the manual "Adding a New Service" checklist into a
+	# two-minute operation: copies templates/a2a-service to ../nexus-$(NAME),
+	# substitutes name/port tokens, and prints the remaining wiring steps
+	# (compose entry, A2A_AGENT_URLS, Prometheus, uv workspace) instead of
+	# editing those shared files automatically.
+	@bash scripts/new-agent.sh "$(NAME)" "$(PORT)"
