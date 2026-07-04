@@ -11,7 +11,7 @@ There is no pyproject/requirements file here. The intended way to run these test
 inside the orchestrator container: `nexus-stack/docker-compose.yml` bind-mounts this
 directory into the orchestrator at `/e2e_tests`, and the orchestrator image already has
 every dependency the tests import (`pytest`, `pytest-asyncio`, `httpx`, `redis`,
-`asyncpg`, `google-genai`). This directory IS its own git repository.
+`asyncpg`). This directory IS its own git repository.
 
 ## Files at this level
 
@@ -23,9 +23,7 @@ every dependency the tests import (`pytest`, `pytest-asyncio`, `httpx`, `redis`,
   variable already ends in `agent-card.json` it is used as-is (the orchestrator container
   sets it to the full card URL, so both forms work). Requires: the `a2a-agent` service
   from `nexus-stack/docker-compose.yml` running (host port 8001 is published, so this test
-  also passes from the host with no env vars). Gotcha: the file imports
-  `from google.genai import types` but never uses it — the import still means
-  `google-genai` must be installed wherever the test runs.
+  also passes from the host with no env vars).
 - `test_persistence_integration.py` — two async tests. `test_redis_connection` pings Redis
   at `REDIS_URL` (default `redis://redis:6379`); `test_postgres_connection` connects with
   asyncpg to `DATABASE_URL` (default `postgresql://nexus:password@postgres:5432/nexus_dev`)
@@ -36,12 +34,11 @@ every dependency the tests import (`pytest`, `pytest-asyncio`, `httpx`, `redis`,
   `REDIS_URL=redis://localhost:6379 DATABASE_URL=postgresql://nexus:password@localhost:5432/nexus_dev`.
   Requires: the `redis` and `postgres` services from `nexus-dev-infra/docker-compose.yml`
   running.
-- `README.md` — human-facing overview. Warning: parts are stale. It refers to an old
-  `projects/` monorepo layout (`projects/orchestrator`, `projects/e2e_tests`), mentions a
-  `requirements.txt` that does not exist in this directory, and describes orchestrator
-  "LLM-as-a-judge" tests by an old filename. Trust this AGENTS.md and the test sources
-  over the README's run instructions.
-- `CHANGELOG.md` — brief history; references the same old layout.
+- `README.md` — human-facing overview of the two test files and how to run them
+  (in-container via `make test` from `../nexus-stack`, or from the host with overridden
+  URLs). Rewritten 2026-07-03 to match reality; keep it in sync with this AGENTS.md.
+- `CHANGELOG.md` — brief history. Older entries predate the polyrepo split and reference
+  an old layout; do not rewrite them.
 - `.pytest_cache/` — pytest artifact, ignore.
 
 ## How to run
@@ -55,7 +52,7 @@ docker compose run --rm -e PYTHONPATH=/app orchestrator \
   pytest /e2e_tests/test_a2a_integration.py /e2e_tests/test_persistence_integration.py -v
 ```
 
-From the host (requires `pip install pytest pytest-asyncio httpx redis asyncpg google-genai`
+From the host (requires `pip install pytest pytest-asyncio httpx redis asyncpg`
 and the containers running):
 
 ```bash

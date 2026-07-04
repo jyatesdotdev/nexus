@@ -1,22 +1,21 @@
 import asyncio
 import httpx
 # PYTEST: The standard testing framework for Python.
-# WHY: It makes it easy to write simple, readable tests that can scale 
+# EDUCATIONAL NOTE: It makes it easy to write simple, readable tests that can scale 
 # to complex functional testing for applications and libraries.
 import pytest
 import os
-from google.genai import types
 
 # ==========================================
 # CONCEPT: Testing Distributed Agents
-# WHY: A2A agents are external services. This test verifies that the running
+# EDUCATIONAL NOTE: A2A agents are external services. This test verifies that the running
 # A2A container is reachable and communicating properly over HTTP.
 # ==========================================
 
 # ASYNCIO MARKER: @pytest.mark.asyncio
 # HOW: This decorator tells pytest that the following test function is 
 # a coroutine and should be run within an event loop.
-# WHY: Without this, pytest would try to run the function as a normal 
+# EDUCATIONAL NOTE: Without this, pytest would try to run the function as a normal 
 # synchronous function and it would fail.
 @pytest.mark.asyncio
 async def test_a2a_communication():
@@ -39,7 +38,7 @@ async def test_a2a_communication():
             resp = await client.get(card_url)
             # ASSERT: The core of any test.
             # HOW: 'assert condition, "Error message"'.
-            # WHY: If the condition is False, an AssertionError is raised, 
+            # EDUCATIONAL NOTE: If the condition is False, an AssertionError is raised, 
             # and pytest marks the test as failed.
             assert resp.status_code == 200, f"Failed to get agent card. Ensure A2A container is running at {a2a_url}"
             
@@ -50,7 +49,7 @@ async def test_a2a_communication():
             
         except httpx.RequestError as e:
             # PYTEST.FAIL: Explicitly fails the test with a custom message.
-            # WHY: Useful when catching exceptions that should not occur 
+            # EDUCATIONAL NOTE: Useful when catching exceptions that should not occur 
             # during a successful test run.
             pytest.fail(f"Connection failed: {e}. Is the A2A container running?")
 
