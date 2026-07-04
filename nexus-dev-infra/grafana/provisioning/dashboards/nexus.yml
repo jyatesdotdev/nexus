@@ -1,0 +1,15 @@
+# EDUCATIONAL NOTE: Grafana Dashboard Provisioning
+# This file tells Grafana to automatically load all JSON files in 
+# /etc/grafana/dashboards as interactive dashboards on startup.
+
+apiVersion: 1
+
+providers:
+  - name: 'Nexus Dashboards'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

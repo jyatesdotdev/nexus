@@ -1,0 +1,27 @@
+# EDUCATIONAL NOTE: Grafana Datasource Provisioning
+# This file automatically configures both Prometheus and Tempo as data sources 
+# when Grafana starts. This creates a "Unified Observability" experience where 
+# you can see metrics and traces in the same UI.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: Tempo
+          matcherRegex: "service\":\"(.*?)\""
+          name: Trace
+          url: "$${__value.raw}"
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: true
+    uid: Tempo

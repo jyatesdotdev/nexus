@@ -1,0 +1,32 @@
+# EDUCATIONAL NOTE: Prometheus Configuration
+# This file tells Prometheus which services to scrape for metrics and at what interval.
+# The 'nexus-net' shared network allows Prometheus to resolve the hostnames 
+# for the orchestrator, mcp-server, and a2a-agent.
+
+global:
+  # EDUCATIONAL NOTE: [Why] We use a highly frequent 5s scrape interval to 
+  # allow for real-time visualization during short educational lab sessions.
+  scrape_interval: 5s 
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'orchestrator'
+    static_configs:
+      - targets: ['orchestrator:8080']
+
+  - job_name: 'mcp-server'
+    static_configs:
+      - targets: ['mcp-server:8000']
+
+  - job_name: 'a2a-agent'
+    static_configs:
+      - targets: ['a2a-agent:8001']
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+
