@@ -1,0 +1,30 @@
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+extend-select = [
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "S",   # bandit
+    "PTH", # use pathlib
+    "TRY", # tryceratops
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+pythonpath = "."
+
+[tool.mypy]
+strict = true
+
+# nexus_common (installed editable from ../nexus-common) ships no py.typed
+# marker, so strict mypy cannot follow its imports; treat it as untyped.
+[[tool.mypy.overrides]]
+module = "nexus_common.*"
+ignore_missing_imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]

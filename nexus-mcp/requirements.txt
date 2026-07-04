@@ -1,0 +1,7 @@
+mcp[sse]
+uvicorn
+starlette
+sqlmodel
+alembic
+psycopg2-binary
+-e ../nexus-common
