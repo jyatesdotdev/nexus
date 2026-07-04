@@ -6,7 +6,7 @@ from google.genai import types
 
 # Add root directory to path to import the orchestrator package
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from orchestrator.reviewer import ReviewerEnforcementRunner
+from orchestrator.reviewer import REVIEW_METADATA_KEY, ReviewerEnforcementRunner
 
 from google.adk.sessions.base_session_service import BaseSessionService
 from google.adk.memory.base_memory_service import BaseMemoryService
@@ -32,12 +32,19 @@ def _async_gen(*events):
     return gen
 
 
-def _make_event(author: str, text: str) -> MagicMock:
+def _make_event(author: str, text: str, partial: bool = False) -> MagicMock:
     return MagicMock(
         author=author,
         content=types.Content(parts=[types.Part(text=text)]),
-        partial=False,
+        partial=partial,
     )
+
+
+def _text_of(event) -> str:
+    content = getattr(event, "content", None)
+    if not content or not getattr(content, "parts", None):
+        return ""
+    return "".join(p.text or "" for p in content.parts)
 
 
 @pytest.fixture
@@ -65,15 +72,26 @@ def mock_reviewer_agent():
     return agent
 
 
+async def _collect(enforcement_runner, prompt="Hello"):
+    events = []
+    async for event in enforcement_runner.run_async(
+        user_id="test_user",
+        session_id="test_session",
+        new_message=types.Content(parts=[types.Part(text=prompt)]),
+    ):
+        events.append(event)
+    return events
+
+
 @pytest.mark.asyncio
 async def test_reviewer_enforcement_approved(mock_runner, mock_reviewer_agent):
     """
     EDUCATIONAL NOTE: Test Programmatic Reviewer Enforcement (APPROVED)
-    Verify that when the reviewer approves, the original response is still returned.
+    The draft streams through unchanged; the verdict is emitted as a
+    content-less metadata notice, never as answer text.
     """
     enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
 
-    # The wrapped runner streams the orchestrator/sub-agent output
     mock_runner.run_async = MagicMock(
         side_effect=_async_gen(_make_event("some_sub_agent", "This is a good response."))
     )
@@ -86,39 +104,42 @@ async def test_reviewer_enforcement_approved(mock_runner, mock_reviewer_agent):
         review_runner.run_async = MagicMock(
             side_effect=_async_gen(_make_event("reviewer_agent", "APPROVED"))
         )
+        events = await _collect(enforcement_runner)
 
-        events = []
-        async for event in enforcement_runner.run_async(
-            user_id="test_user",
-            session_id="test_session",
-            new_message=types.Content(parts=[types.Part(text="Hello")]),
-        ):
-            events.append(event)
-
-    # We expect 2 events: the original one and the reviewer's approval
+    # Draft event + one content-less review notice; no verdict text in stream.
     assert len(events) == 2
-    assert "This is a good response." in events[0].content.parts[0].text
-    assert "APPROVED" in events[1].content.parts[0].text
-    assert events[1].author == "reviewer_agent"
+    assert "This is a good response." in _text_of(events[0])
+    notice = events[1]
+    assert notice.author == "reviewer_agent"
+    assert _text_of(notice) == ""
+    assert notice.custom_metadata[REVIEW_METADATA_KEY]["verdict"] == "approved"
+    assert "APPROVED" in notice.custom_metadata[REVIEW_METADATA_KEY]["critique"]
 
-    # The review runner must be built around the reviewer agent and the
-    # buffered response must be embedded in the review prompt.
+    # Approved -> no revision cycle: the wrapped runner ran exactly once.
+    assert mock_runner.run_async.call_count == 1
+
+    # The review runner is built around the reviewer agent and the buffered
+    # draft is embedded in the review prompt.
     assert mock_runner_cls.call_args.kwargs["agent"] is mock_reviewer_agent
     review_message = review_runner.run_async.call_args.kwargs["new_message"]
     assert "This is a good response." in review_message.parts[0].text
 
 
 @pytest.mark.asyncio
-async def test_reviewer_enforcement_revision_needed(mock_runner, mock_reviewer_agent):
+async def test_reviewer_enforcement_revision_triggers_revised_answer(
+    mock_runner, mock_reviewer_agent
+):
     """
     EDUCATIONAL NOTE: Test Programmatic Reviewer Enforcement (REVISION)
-    Verify that when the reviewer requests a revision, the critique is returned.
+    Streaming enforcement cannot retract already-streamed text, so on REVISION
+    the runner emits the critique as a metadata notice and then runs exactly
+    ONE revision cycle — the stream must END with a real revised answer.
     """
     enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
 
-    mock_runner.run_async = MagicMock(
-        side_effect=_async_gen(_make_event("some_sub_agent", "This response is bad."))
-    )
+    draft_run = _async_gen(_make_event("some_sub_agent", "This response is bad."))
+    revision_run = _async_gen(_make_event("some_sub_agent", "This is the revised answer."))
+    mock_runner.run_async = MagicMock(side_effect=[draft_run(), revision_run()])
 
     with patch("orchestrator.reviewer.Runner") as mock_runner_cls:
         review_runner = mock_runner_cls.return_value
@@ -127,16 +148,106 @@ async def test_reviewer_enforcement_revision_needed(mock_runner, mock_reviewer_a
                 _make_event("reviewer_agent", "REVISION: The tone is unprofessional.")
             )
         )
+        events = await _collect(enforcement_runner)
 
-        events = []
-        async for event in enforcement_runner.run_async(
-            user_id="test_user",
-            session_id="test_session",
-            new_message=types.Content(parts=[types.Part(text="Hello")]),
-        ):
-            events.append(event)
+    assert len(events) == 3
+    # 1) draft, 2) content-less notice carrying the critique, 3) revised answer.
+    assert "This response is bad." in _text_of(events[0])
+    notice = events[1]
+    assert _text_of(notice) == ""
+    assert notice.custom_metadata[REVIEW_METADATA_KEY]["verdict"] == "revision"
+    assert "unprofessional" in notice.custom_metadata[REVIEW_METADATA_KEY]["critique"]
+    assert "This is the revised answer." in _text_of(events[2])
+
+    # The raw critique text must never appear as content in the stream.
+    assert all("REVISION:" not in _text_of(e) for e in events)
+
+    # Exactly one revision cycle: draft run + revision run, review run once
+    # (the revised answer is NOT re-reviewed).
+    assert mock_runner.run_async.call_count == 2
+    assert review_runner.run_async.call_count == 1
+    revision_message = mock_runner.run_async.call_args.kwargs["new_message"]
+    assert "The tone is unprofessional." in revision_message.parts[0].text
+    assert "Hello" in revision_message.parts[0].text  # original request included
+
+
+@pytest.mark.asyncio
+async def test_reviewer_buffers_only_authoritative_text(
+    mock_runner, mock_reviewer_agent
+):
+    """
+    EDUCATIONAL NOTE: Partial vs Authoritative Events
+    In SSE streaming mode ADK yields incremental deltas (partial=True) AND a
+    final aggregate event with the full text. Buffering both doubled the draft
+    the reviewer saw ("the response is repetitive" on every request). Only the
+    non-partial text may be buffered.
+    """
+    enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
+
+    mock_runner.run_async = MagicMock(
+        side_effect=_async_gen(
+            _make_event("some_sub_agent", "The answer is ", partial=True),
+            _make_event("some_sub_agent", "42.", partial=True),
+            _make_event("some_sub_agent", "The answer is 42."),  # final aggregate
+        )
+    )
+
+    with patch("orchestrator.reviewer.Runner") as mock_runner_cls:
+        review_runner = mock_runner_cls.return_value
+        review_runner.run_async = MagicMock(
+            side_effect=_async_gen(_make_event("reviewer_agent", "APPROVED"))
+        )
+        await _collect(enforcement_runner)
+
+    review_message = review_runner.run_async.call_args.kwargs["new_message"]
+    assert review_message.parts[0].text.count("The answer is 42.") == 1
+
+
+@pytest.mark.asyncio
+async def test_review_runs_in_isolated_session(mock_runner, mock_reviewer_agent):
+    """
+    EDUCATIONAL NOTE: Out-of-Band Review
+    The review must never touch the user's persistent session: recording the
+    REVIEW REQUEST / verdict there contaminated every later turn's review with
+    earlier topics. The review Runner gets fresh in-memory services and a
+    dedicated session id.
+    """
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+
+    enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
+    mock_runner.run_async = MagicMock(
+        side_effect=_async_gen(_make_event("some_sub_agent", "A fine draft."))
+    )
+
+    with patch("orchestrator.reviewer.Runner") as mock_runner_cls:
+        review_runner = mock_runner_cls.return_value
+        review_runner.run_async = MagicMock(
+            side_effect=_async_gen(_make_event("reviewer_agent", "APPROVED"))
+        )
+        await _collect(enforcement_runner)
+
+    build_kwargs = mock_runner_cls.call_args.kwargs
+    assert isinstance(build_kwargs["session_service"], InMemorySessionService)
+    assert isinstance(build_kwargs["memory_service"], InMemoryMemoryService)
+    assert build_kwargs["session_service"] is not mock_runner.session_service
+    run_kwargs = review_runner.run_async.call_args.kwargs
+    assert run_kwargs["session_id"] == "review_test_session"
+
+
+@pytest.mark.asyncio
+async def test_empty_verdict_fails_open(mock_runner, mock_reviewer_agent):
+    """A reviewer that produces no text must not block or mangle the answer."""
+    enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
+    mock_runner.run_async = MagicMock(
+        side_effect=_async_gen(_make_event("some_sub_agent", "A fine draft."))
+    )
+
+    with patch("orchestrator.reviewer.Runner") as mock_runner_cls:
+        review_runner = mock_runner_cls.return_value
+        review_runner.run_async = MagicMock(side_effect=_async_gen())
+        events = await _collect(enforcement_runner)
 
     assert len(events) == 2
-    assert "REVISION:" in events[1].content.parts[0].text
-    assert "The tone is unprofessional." in events[1].content.parts[0].text
-    assert events[1].author == "reviewer_agent"
+    assert events[1].custom_metadata[REVIEW_METADATA_KEY]["verdict"] == "approved"
+    assert mock_runner.run_async.call_count == 1  # no revision cycle

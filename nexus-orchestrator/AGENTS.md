@@ -1,6 +1,6 @@
 # nexus-orchestrator
 
-This repository is the central "root agent" of the Nexus multi-agent learning project. It is a Python service built on the Google Agent Development Kit (ADK) that receives user requests (via CLI or a FastAPI/SSE web server), decides which specialized sub-agent should handle each request, and delegates to it. Sub-agents include local tool-using agents (sensors, Prometheus metrics, YNAB budgets, entity parsing, safe bash), a remote HR agent reached over the Model Context Protocol (MCP, served by the sibling repo nexus-mcp), and a remote weather agent reached over the Agent-to-Agent (A2A) protocol (served by nexus-a2a). A reviewer sub-agent critiques responses before they reach the user.
+This repository is the central "root agent" of the Nexus multi-agent learning project. It is a Python service built on the Google Agent Development Kit (ADK) that receives user requests (via CLI or a FastAPI/SSE web server), decides which specialized sub-agent should handle each request, and delegates to it. Sub-agents include local tool-using agents (sensors, Prometheus metrics, YNAB budgets, entity parsing, safe bash), a remote HR agent reached over the Model Context Protocol (MCP, served by the sibling repo nexus-mcp), and a remote weather agent reached over the Agent-to-Agent (A2A) protocol (served by nexus-a2a). A reviewer sub-agent critiques every response out-of-band after it streams (review-then-revise: a REVISION verdict triggers one revision cycle so the user always ends with a real answer, never the raw critique).
 
 Sibling repos in the workspace: nexus-a2a (weather A2A server), nexus-mcp (HR directory MCP server), nexus-ui (React frontend that talks to this server), nexus-common (shared Python library, installed editable from `../nexus-common`), nexus-dev-infra (Grafana/Tempo/Prometheus), nexus-stack (docker-compose deployment that builds and runs this service). The default LLM is Gemini (`gemini-2.5-flash`); local models via Ollama are supported through an adapter.
 
@@ -39,7 +39,7 @@ uv run mypy orchestrator                            # strict type check
 
 Full-stack (all services in Docker): `cd ../nexus-stack && make up` / `make down` / `make test`. Health probes on a running server: `curl http://localhost:8080/health` and `curl http://localhost:8080/system-status`.
 
-Known state as of 2026-07-04: all 41 tests pass (25 pre-existing + 16 added with the trace-header/reviewer-wiring/A2A-discovery features).
+Known state as of 2026-07-04: all 44 tests pass (25 pre-existing + 16 added with the trace-header/reviewer-wiring/A2A-discovery features + 3 net new with the streaming-safe reviewer semantics — see reviewer notes in `orchestrator/AGENTS.md`).
 
 ## Caution / do not modify
 

@@ -21,7 +21,11 @@ from orchestrator.config import (
 from orchestrator.persistence.redis_services import RedisSessionService, RedisMemoryService
 from orchestrator.persistence.postgres_services import PostgresMemoryService
 from orchestrator.persistence.database_services import DatabaseSessionService
-from orchestrator.reviewer import LoopDetectionRunner, build_governed_runner  # noqa: F401  (LoopDetectionRunner re-exported for compatibility)
+from orchestrator.reviewer import (  # noqa: F401  (LoopDetectionRunner re-exported for compatibility)
+    LoopDetectionRunner,
+    REVIEW_METADATA_KEY,
+    build_governed_runner,
+)
 from orchestrator.registry.agent_registry import AgentRegistry
 
 # Register foundation model adapters
@@ -129,6 +133,24 @@ async def get_runner(agent: Agent) -> Any:
 # 4. Chat Logic
 # ==========================================
 
+def _print_chat_event(event: Any) -> None:
+    """Prints one runner event for the CLI.
+
+    EDUCATIONAL NOTE: The reviewer's verdict travels as a content-less event
+    with custom_metadata (see reviewer.REVIEW_METADATA_KEY) so it can never be
+    mistaken for the answer. The CLI surfaces it as a labeled system notice;
+    when the verdict is REVISION, the revised answer events follow it.
+    """
+    review = (getattr(event, "custom_metadata", None) or {}).get(REVIEW_METADATA_KEY)
+    if review:
+        print(f"\n[reviewer {review['verdict']}] {review['critique']}", flush=True)
+        return
+    if event.content and event.content.parts:
+        for part in event.content.parts:
+            if part.text:
+                print(part.text, end="", flush=True)
+
+
 async def run_chat_loop(prompt: Optional[str] = None) -> None:
     """Runs the main chat loop (CLI)."""
     async with get_runner(root_agent) as runner:
@@ -139,10 +161,7 @@ async def run_chat_loop(prompt: Optional[str] = None) -> None:
                 session_id=DEFAULT_SESSION_ID,
                 new_message=Content(parts=[Part(text=prompt)]),
             ):
-                if event.content and event.content.parts:
-                    for part in event.content.parts:
-                        if part.text:
-                            print(part.text, end="", flush=True)
+                _print_chat_event(event)
             print("\n")
             return
 
@@ -160,10 +179,7 @@ async def run_chat_loop(prompt: Optional[str] = None) -> None:
                     session_id=DEFAULT_SESSION_ID,
                     new_message=Content(parts=[Part(text=user_input)]),
                 ):
-                    if event.content and event.content.parts:
-                        for part in event.content.parts:
-                            if part.text:
-                                print(part.text, end="", flush=True)
+                    _print_chat_event(event)
                 print("\n")
             except (KeyboardInterrupt, EOFError):
                 break
