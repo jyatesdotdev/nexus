@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, Optional
 
 # EDUCATIONAL NOTE: Identity Propagation (Mock JWT)

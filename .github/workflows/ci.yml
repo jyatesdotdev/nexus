@@ -1,0 +1,210 @@
+# EDUCATIONAL NOTE: Path-Filtered Monorepo CI
+# [Why] Nexus is one repository containing several independently deployable services.
+# Running every job on every push wastes minutes and blurs signal, so a 'changes' job
+# computes which service directories a push/PR actually touched and only those jobs run.
+# nexus-common is installed editable (-e ../nexus-common) by every Python service, so a
+# nexus-common change re-triggers ALL Python service jobs.
+#
+# DELIBERATELY EXCLUDED from CI (they need things a bare runner does not have):
+#   - LLM evals (`make evals`)                — require a live GEMINI_API_KEY secret and
+#                                               spend real, non-deterministic LLM calls.
+#   - nexus-integration/ tests               — require the live Docker stack
+#                                               (orchestrator, MCP, A2A, Redis, Postgres
+#                                               on nexus-net). Run via `make test` locally.
+#   - Playwright E2E (nexus-ui/e2e)          — require the live Docker stack behind the UI.
+# Checkov IS included below: it is a purely static Dockerfile scan (no docker daemon),
+# but it is kept non-blocking — see the job comment.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Detect which parts of the monorepo changed. Two filter steps because they feed
+  # different consumers: `python` emits a JSON list of changed service names (consumed
+  # as a dynamic matrix via fromJSON), `other` emits plain per-filter booleans.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      python-services: ${{ steps.python.outputs.changes }}
+      nexus-common: ${{ steps.other.outputs.nexus-common }}
+      ui: ${{ steps.other.outputs.ui }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: python
+        with:
+          # Every Python service depends on nexus-common (editable install), so a
+          # nexus-common change must re-test all three. A workflow change re-runs
+          # everything, since it may alter any gate.
+          filters: |
+            nexus-orchestrator:
+              - 'nexus-orchestrator/**'
+              - 'nexus-common/**'
+              - '.github/workflows/ci.yml'
+            nexus-mcp:
+              - 'nexus-mcp/**'
+              - 'nexus-common/**'
+              - '.github/workflows/ci.yml'
+            nexus-a2a:
+              - 'nexus-a2a/**'
+              - 'nexus-common/**'
+              - '.github/workflows/ci.yml'
+      - uses: dorny/paths-filter@v3
+        id: other
+        with:
+          filters: |
+            nexus-common:
+              - 'nexus-common/**'
+              - '.github/workflows/ci.yml'
+            ui:
+              - 'nexus-ui/**'
+              - '.github/workflows/ci.yml'
+
+  python:
+    name: python (${{ matrix.service }})
+    needs: changes
+    if: needs.changes.outputs.python-services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Dynamic matrix: only the services whose files changed.
+        service: ${{ fromJSON(needs.changes.outputs.python-services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # All three services run Python 3.14: every local venv is 3.14.4 and every
+          # Dockerfile builds FROM python:3.14-slim, so one uniform matrix version is
+          # correct. (nexus-orchestrator's ruff target-version py310 is only a lint
+          # compatibility floor, not its runtime.) Quoted so YAML doesn't read a float.
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: ${{ matrix.service }}/requirements*.txt
+      - name: Install dependencies
+        # requirements.txt contains '-e ../nexus-common'; that relative path resolves
+        # correctly because we install from inside the service directory.
+        # nexus-mcp keeps its tooling (pytest, pytest-asyncio, ruff, mypy, httpx) in
+        # requirements-dev.txt; the other services ship tooling in requirements.txt.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Ruff
+        run: ruff check .
+      - name: Mypy
+        # Only nexus-mcp passes `mypy --strict` cleanly today (verified 2026-07-04:
+        # orchestrator has 40 errors, a2a has 15). Gate only where it is green rather
+        # than adding a permanently red check; widen this when the others are fixed.
+        if: matrix.service == 'nexus-mcp'
+        run: mypy .
+      - name: Pytest
+        # Mirrors the unit-test invocation in nexus-stack/Makefile (`make test`).
+        run: pytest tests/
+        env:
+          PYTHONPATH: .
+
+  nexus-common:
+    needs: changes
+    if: needs.changes.outputs.nexus-common == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nexus-common
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # nexus-common declares requires-python >=3.10; lint with the same 3.14 the
+          # consuming services run.
+          python-version: '3.14'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff
+        # nexus-common has no [tool.ruff] section, so ruff's defaults apply (they match
+        # the workspace's line-length 88 convention).
+        run: ruff check .
+      # Mypy is intentionally NOT run here: nexus-common has no [tool.mypy] config and
+      # ships no py.typed marker (consumers treat it as untyped — see nexus-mcp's
+      # pyproject override), so a strict run would only produce noise.
+      # Pytest is intentionally NOT run here: nexus-common contains no tests as of
+      # 2026-07-04. Add a pytest step when a tests/ directory appears.
+
+  ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nexus-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # nexus-ui has no .nvmrc or "engines" field; Node 24 is the current active
+          # LTS line, which is the sensible CI default (local dev runs 26/current).
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: nexus-ui/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        # "test" is `vitest run` — single execution, no watch mode.
+        run: npm test
+      - name: Build
+        # `tsc -b && vite build` — this doubles as the TypeScript type-check gate.
+        run: npm run build
+
+  semgrep:
+    # Always runs: the workspace Semgrep rules (EDUCATIONAL NOTE presence, test
+    # isolation from live external APIs) apply across every service directory,
+    # and the scan is cheap enough not to bother path-filtering.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # Semgrep does not yet declare support for CPython 3.14; run it on 3.13.
+          python-version: '3.13'
+      - name: Install semgrep
+        # Pinned to the 1.x line so a 2.x release cannot silently change scan behavior.
+        run: pip install "semgrep>=1.100,<2"
+      - name: Semgrep (Nexus workspace standards)
+        # Same rules `make verify-all` applies via the returntocorp/semgrep container.
+        run: semgrep scan --config nexus-stack/.semgrep.yaml --error .
+
+  checkov:
+    # Static Dockerfile best-practice scan — no docker daemon needed. Same two checks
+    # as `make verify-all`: CKV_DOCKER_11 / CKV_DOCKER_7 (multi-stage builds, non-root
+    # users per .kiro/steering/tech.md). Kept NON-BLOCKING via --soft-fail so that a
+    # checkov version bump introducing new behavior can never wedge otherwise-green CI;
+    # treat findings in the log as advisory and fix them in the Dockerfiles.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # Checkov's supported interpreter range historically lags newest CPython.
+          python-version: '3.12'
+      - name: Install checkov
+        run: pip install checkov
+      - name: Checkov (Dockerfile checks, advisory)
+        run: >
+          checkov --directory . --framework dockerfile
+          --check CKV_DOCKER_11,CKV_DOCKER_7 --quiet --soft-fail

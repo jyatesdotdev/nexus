@@ -3,9 +3,10 @@
 Cross-service integration tests for the Nexus multi-agent learning lab. Unlike the unit
 tests inside each service repo (which mock all I/O), these tests hit real running
 containers over the network: they verify that the A2A weather sub-agent answers protocol
-discovery requests and that the persistence backends (Redis, Postgres) are reachable. They
-are the "is the wiring alive" layer between per-service unit tests and the Playwright
-browser E2E tests that live in `nexus-ui/e2e/`.
+discovery requests, that the persistence backends (Redis, Postgres) are reachable, and
+that the orchestrator's root agent actually routes prompts to the correct sub-agent over
+`/run_sse`. They are the "is the wiring alive" layer between per-service unit tests and
+the Playwright browser E2E tests that live in `nexus-ui/e2e/`.
 
 There is no pyproject/requirements file here. The intended way to run these tests is
 inside the orchestrator container: `nexus-stack/docker-compose.yml` bind-mounts this
@@ -34,7 +35,25 @@ every dependency the tests import (`pytest`, `pytest-asyncio`, `httpx`, `redis`,
   `REDIS_URL=redis://localhost:6379 DATABASE_URL=postgresql://nexus:password@localhost:5432/nexus_dev`.
   Requires: the `redis` and `postgres` services from `nexus-dev-infra/docker-compose.yml`
   running.
-- `README.md` — human-facing overview of the two test files and how to run them
+- `test_routing_integration.py` — two async tests exercising true end-to-end routing
+  through the orchestrator's `POST /run_sse` endpoint (the same endpoint the React UI
+  calls): a weather prompt that must be delegated to `weather_a2a_agent` and an HR prompt
+  that must be delegated to `mcp_agent`. Each test POSTs a prompt (with the UI's mock
+  JWT as `user_id` and a fresh `session_id`), consumes the SSE stream to completion under
+  a hard 120 s timeout, asserts a non-empty final answer, and asserts the expected
+  sub-agent appears in the stream — delegation is detected from ADK event `author` fields
+  and `actions.transferToAgent`, exactly the fields the UI's "Delegating to ..." banner
+  uses. Base URL comes from `ORCHESTRATOR_URL` (default `http://localhost:8080`; host
+  port 8080 is published, so it works from the host; inside a container on `nexus-net`
+  set `ORCHESTRATOR_URL=http://orchestrator:8080`). If `GET /health` is unreachable the
+  tests `pytest.skip` instead of failing, so a stackless run stays green. Prompts and
+  expected agent names mirror `nexus-orchestrator/orchestrator/eval_cases.py`; the agent
+  names are contracts with `nexus-orchestrator/orchestrator/agents/dynamic_agents.py`
+  (single-URL naming). Requires: the full app stack (`make up`) AND a valid
+  `GEMINI_API_KEY`, since routing is a live LLM decision. `make test` in
+  `../nexus-stack` discovers all tests in this directory automatically, so it runs
+  in-container as part of the normal suite.
+- `README.md` — human-facing overview of the test files and how to run them
   (in-container via `make test` from `../nexus-stack`, or from the host with overridden
   URLs). Rewritten 2026-07-03 to match reality; keep it in sync with this AGENTS.md.
 - `CHANGELOG.md` — brief history. Older entries predate the polyrepo split and reference
@@ -48,8 +67,9 @@ full stack up (`make up`):
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-stack
-docker compose run --rm -e PYTHONPATH=/app orchestrator \
-  pytest /e2e_tests/test_a2a_integration.py /e2e_tests/test_persistence_integration.py -v
+docker compose run --rm -e PYTHONPATH=/app -e ORCHESTRATOR_URL=http://orchestrator:8080 orchestrator \
+  pytest /e2e_tests/test_a2a_integration.py /e2e_tests/test_persistence_integration.py \
+         /e2e_tests/test_routing_integration.py -v
 ```
 
 From the host (requires `pip install pytest pytest-asyncio httpx redis asyncpg`
@@ -62,10 +82,23 @@ DATABASE_URL=postgresql://nexus:password@localhost:5432/nexus_dev \
 pytest -v
 ```
 
+(`ORCHESTRATOR_URL` defaults to `http://localhost:8080`, which is correct for host runs.)
+
 Services that must be running for the whole suite to pass:
-- `a2a-agent` (from `nexus-stack/docker-compose.yml`)
+- `orchestrator` and `a2a-agent` (from `nexus-stack/docker-compose.yml`); the routing
+  test additionally needs `mcp-server` and a valid `GEMINI_API_KEY` in `nexus-stack/.env`
 - `redis` and `postgres` (from `nexus-dev-infra/docker-compose.yml`)
 - the shared Docker network `nexus-net` must exist (created by `make up` in nexus-stack).
+
+## CI
+
+`.github/workflows/ci.yml` at the workspace root runs per-service lint/type-check/unit
+tests, Semgrep, and a static Checkov Dockerfile scan on push/PR (path-filtered per
+service). This directory's tests are deliberately EXCLUDED from CI — they need the live
+Docker stack (and, for routing, a `GEMINI_API_KEY`) — as are the LLM evals and the
+Playwright E2E suite. If CI ever gains a Docker-in-Docker stage, this suite is the
+natural candidate to wire in; the routing test already self-skips when the stack is
+absent.
 
 ## Caution
 
