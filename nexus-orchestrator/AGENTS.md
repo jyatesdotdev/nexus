@@ -1,0 +1,50 @@
+# nexus-orchestrator
+
+This repository is the central "root agent" of the Nexus multi-agent learning project. It is a Python service built on the Google Agent Development Kit (ADK) that receives user requests (via CLI or a FastAPI/SSE web server), decides which specialized sub-agent should handle each request, and delegates to it. Sub-agents include local tool-using agents (sensors, Prometheus metrics, YNAB budgets, entity parsing, safe bash), a remote HR agent reached over the Model Context Protocol (MCP, served by the sibling repo nexus-mcp), and a remote weather agent reached over the Agent-to-Agent (A2A) protocol (served by nexus-a2a). A reviewer sub-agent critiques responses before they reach the user.
+
+Sibling repos in the workspace: nexus-a2a (weather A2A server), nexus-mcp (HR directory MCP server), nexus-ui (React frontend that talks to this server), nexus-common (shared Python library, installed editable from `../nexus-common`), nexus-dev-infra (Grafana/Tempo/Prometheus), nexus-stack (docker-compose deployment that builds and runs this service). The default LLM is Gemini (`gemini-2.5-flash`); local models via Ollama are supported through an adapter.
+
+## Files at this level
+
+- `main.py` — Intentionally tiny (4 lines). Entry point that imports and runs the Click CLI from `orchestrator/cli.py`. Used for local runs (`python main.py chat|serve|evals`). The Docker image does NOT run main.py; it runs Gunicorn against `orchestrator.asgi:app`.
+- `Dockerfile` — Multi-stage build (python:3.14-slim), non-root `appuser`, healthcheck on `GET /health`. IMPORTANT: the build context is the workspace root, not this repo — it does `COPY nexus-orchestrator/requirements.txt` and `COPY nexus-common /nexus-common`. Build it from the parent directory (nexus-stack's compose file does this). Runtime command: `gunicorn orchestrator.asgi:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080`. Sets `PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc` (required for correct Prometheus metrics across Gunicorn workers) and wipes that dir on start.
+- `requirements.txt` — Runtime and dev dependencies together (google-adk, a2a-sdk, mcp[sse], fastapi, redis, asyncpg, pgvector, pytest, ruff, mypy...). Ends with `-e ../nexus-common`, so installing requires the sibling nexus-common checkout to exist. Note: SQLAlchemy (used by `orchestrator/persistence/`) is not pinned here; it arrives transitively via google-adk.
+- `pyproject.toml` — Only tool config: Ruff targets py310, Mypy strict. There is no build/packaging section; the project is not pip-installable as a package.
+- `pytest.ini` — Sets `asyncio_mode = strict` (every async test needs `@pytest.mark.asyncio`) and silences DeprecationWarning/UserWarning.
+- `README.md` — Human-facing overview. Refreshed 2026-07-03: root agent documented at `orchestrator/app.py`, tracing via Grafana Tempo (OTLP endpoint env var), default model `gemini-2.5-flash`.
+- `CHANGELOG.md` — Reverse-chronological notes; newest entry goes at the top. Older entries are historical (e.g. the "src layout / src/agent_app/" entry describes a structure that no longer exists — leave history as-is).
+- `.dockerignore` / `.gitignore` — Standard excludes. `.env` is git-ignored; secrets never go in the repo.
+
+## Subdirectories
+
+- `orchestrator/` — All application code. See `orchestrator/AGENTS.md`.
+- `tests/` — Pytest suite (fully mocked, no network). See `tests/AGENTS.md`.
+- `venv/`, `.mypy_cache/`, `.pytest_cache/`, `__pycache__/` — Local artifacts; never edit or commit.
+
+## How to run and test
+
+Environment: create a `.env` file (or export vars) with at least `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). The CLI refuses to start without one. Optional: `AGENT_MODEL` (default `gemini-2.5-flash`; `ollama/llama3` for local), `PERSISTENCE_BACKEND` (`in_memory` default, `redis`, or `postgres`), `MCP_SERVER_URLS`, `A2A_AGENT_URLS`.
+
+```bash
+cd /Users/jyates/Repositories/nexus/nexus-orchestrator
+python3 -m venv venv                                # once
+./venv/bin/pip install -r requirements.txt          # once (needs ../nexus-common)
+./venv/bin/python main.py chat "What is the weather in Paris?"   # one-shot prompt
+./venv/bin/python main.py chat                      # interactive chat
+./venv/bin/python main.py serve                     # FastAPI server on 0.0.0.0:8080
+./venv/bin/python main.py evals                     # LLM routing evals (hits real model)
+./venv/bin/python -m pytest tests/                  # unit tests (no API key or network needed)
+./venv/bin/ruff check orchestrator tests            # lint
+./venv/bin/mypy orchestrator                        # strict type check
+```
+
+Full-stack (all services in Docker): `cd ../nexus-stack && make up` / `make down` / `make test`. Health probes on a running server: `curl http://localhost:8080/health` and `curl http://localhost:8080/system-status`.
+
+Known state as of 2026-07-03: all 25 tests pass (the previously failing reviewer-enforcement mocks were repaired).
+
+## Caution / do not modify
+
+- Do not commit `.env`, `venv/`, or cache directories.
+- Do not move `main.py` or rename `orchestrator.asgi:app` without updating the Dockerfile CMD and nexus-stack's compose config.
+- The Dockerfile's COPY paths assume the workspace-root build context; changing them breaks the nexus-stack build.
+- Project convention: explanatory architecture comments in code use the `# EDUCATIONAL NOTE:` prefix; keep that convention when adding commentary.
