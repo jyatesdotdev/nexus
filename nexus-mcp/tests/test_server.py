@@ -111,6 +111,19 @@ def test_search_directory_no_results() -> None:
     assert results == "No employees found matching the criteria."
 
 
+def test_search_directory_case_insensitive() -> None:
+    """LLMs pass arbitrarily-cased arguments; matching must not care.
+
+    Regression test: lowercase "engineering" used to return "no employees
+    found", making live demo answers nondeterministic.
+    """
+    results = search_directory(department="engineering")
+    assert "Alice Smith" in results
+    assert "Charlie Brown" in results
+    results = search_directory(name="smith")
+    assert "Alice Smith" in results
+
+
 def test_get_system_status() -> None:
     """Verify the status resource."""
     status = get_system_status()

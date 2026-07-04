@@ -1,5 +1,8 @@
 # Changelog - Nexus Directory (MCP)
 
+## [Bugfix] - 2026-07-04
+- **Case-insensitive search:** `search_directory` matched department exactly and name case-sensitively, so LLM-generated arguments like `"engineering"` nondeterministically returned "No employees found" in live demos. Department now compares lowercased and name uses `icontains`; regression test added.
+
 ## [Tooling] - 2026-07-04
 - **uv workspace:** Runtime deps moved into `pyproject.toml` `[project]` with dev tooling in `[dependency-groups]`; `nexus-common` is now a `{ workspace = true }` source. The per-service `venv/` is gone — `uv sync` at the workspace root creates the shared `.venv`, and `uv run pytest|ruff|mypy|alembic` replaces the venv-bin invocations. `requirements.txt`/`requirements-dev.txt` stay as hand-kept mirrors for the Dockerfile and CI (header comments document the sync rule).
 - **Typing:** Removed the `nexus_common.*` `ignore_missing_imports` mypy override — nexus-common now ships a `py.typed` marker, so strict mypy follows its real types. `mypy .` remains clean.

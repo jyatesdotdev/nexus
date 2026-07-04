@@ -3,7 +3,7 @@
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.session import ServerSession
 from nexus_common import IdentityContext, bootstrap_starlette_service
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, func, select
 
 from database import User, engine, init_db
 
@@ -66,10 +66,16 @@ def search_directory(department: str | None = None, name: str | None = None) -> 
     with Session(engine) as session:
         statement = select(User)
 
+        # EDUCATIONAL NOTE: LLM-generated tool arguments are unreliable about
+        # casing ("engineering" vs "Engineering"), so matching must be
+        # case-insensitive or the same question nondeterministically returns
+        # "no employees found" depending on how the model phrased the call.
         if department:
-            statement = statement.where(User.department == department)
+            statement = statement.where(
+                func.lower(User.department) == department.lower()
+            )
         if name:
-            statement = statement.where(col(User.name).contains(name))
+            statement = statement.where(col(User.name).icontains(name))
 
         results = session.exec(statement).all()
 
