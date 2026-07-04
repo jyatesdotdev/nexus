@@ -58,9 +58,10 @@ class ReviewerEnforcementRunner:
       3. Emit ONE content-less notice event whose custom_metadata carries the
          verdict + critique. Text-rendering clients skip it; the CLI and
          curious UIs can surface it as a system-level notice.
-      4. If the verdict is REVISION, run exactly ONE revision cycle through
-         the wrapped runner (same user session), so the stream always ends
-         with a real answer. The revision is not re-reviewed: a stubborn
+      4. If the verdict is REVISION, run exactly ONE revision cycle in an
+         ISOLATED scratch session seeded from the user's history, stream its
+         events, and append only the revised ANSWER to the user's session —
+         see run_async step 4. The revision is not re-reviewed: a stubborn
          reviewer must not be able to loop the pipeline forever.
 
     [Why the review is isolated] The review runner gets fresh InMemory
@@ -109,11 +110,21 @@ class ReviewerEnforcementRunner:
         if approved:
             return
 
-        # 4. Exactly one revision cycle through the wrapped runner. The
-        # corrective instruction and the revised answer become regular events
-        # in the user's real session, so history stays coherent for later
-        # turns. Only run_config is forwarded (invocation_id/state_delta from
-        # the original request must not be replayed).
+        # 4. Exactly one revision cycle, run OUT-OF-BAND like the review.
+        #
+        # EDUCATIONAL NOTE: QA Scaffolding Must Not Persist as User History
+        # [Why] An earlier version re-ran the wrapped runner in the USER
+        # session, so the synthetic "For context: this is an automated QA
+        # retry..." message was persisted by the session service as a USER
+        # event — pipeline scaffolding that later turns and history replays
+        # could see (and that Redis session forensics did see). Instead, the
+        # revision now runs in a throwaway InMemorySessionService seeded —
+        # via the BaseSessionService API, so it works identically for
+        # Redis/Postgres-backed sessions — with a copy of the user session's
+        # events. Its events still stream to the client (the stream must end
+        # with a real answer), but only ONE thing is written back to the
+        # user's persistent session: a model event carrying the revised
+        # answer, appended through session_service.append_event.
         #
         # EDUCATIONAL NOTE: Prompt Shape Matters Downstream
         # [Why] The revision message may be re-delegated verbatim to remote
@@ -130,16 +141,66 @@ class ReviewerEnforcementRunner:
             "Produce the corrected FINAL answer to the request above. Reply "
             "with the revised answer only — do not mention the review process."
         )
+        # Only run_config is forwarded (invocation_id/state_delta from the
+        # original request must not be replayed).
         revision_kwargs = {}
         if "run_config" in kwargs:
             revision_kwargs["run_config"] = kwargs["run_config"]
-        async for event in self._runner.run_async(
+
+        session_service = self._runner.session_service
+        user_session = await session_service.get_session(
+            app_name=self._runner.app_name, user_id=user_id, session_id=session_id
+        )
+
+        # Seed the scratch session through the service API only: create it,
+        # then replay copies of the user's events with append_event (which
+        # also rebuilds session state from the events' state deltas).
+        scratch_service = InMemorySessionService()  # type: ignore[no-untyped-call]
+        scratch_session = await scratch_service.create_session(
+            app_name=self._runner.app_name,
+            user_id=user_id,
+            session_id=session_id,
+            state=dict(user_session.state) if user_session else None,
+        )
+        for past_event in user_session.events if user_session else []:
+            await scratch_service.append_event(
+                scratch_session, past_event.model_copy(deep=True)
+            )
+
+        revision_runner = Runner(
+            app_name=self._runner.app_name,
+            agent=self._runner.agent,
+            session_service=scratch_service,
+            memory_service=self._runner.memory_service,
+        )
+
+        # Stream the revision; the LAST authoritative content event is what
+        # SSE clients display as the answer, so that is what gets persisted.
+        revised_text = ""
+        revised_author = getattr(self._runner.agent, "name", None) or "root_agent"
+        async for event in revision_runner.run_async(
             user_id=user_id,
             session_id=session_id,
             new_message=Content(role="user", parts=[Part(text=revision_prompt)]),
             **revision_kwargs,
         ):
+            text = self._authoritative_text(event)
+            if text.strip():
+                revised_text = text
+                revised_author = getattr(event, "author", None) or revised_author
             yield event
+
+        # Persist ONLY the revised answer to the user's session. The event is
+        # rebuilt clean (author + text) so no revision-run actions/state
+        # deltas leak into persistent history.
+        if revised_text.strip() and user_session is not None:
+            await session_service.append_event(
+                user_session,
+                Event(
+                    author=revised_author,
+                    content=Content(role="model", parts=[Part(text=revised_text)]),
+                ),
+            )
 
     @staticmethod
     def _authoritative_text(event: Any) -> str:

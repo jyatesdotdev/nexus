@@ -55,11 +55,14 @@ def mock_runner():
     runner.session_service = MagicMock(spec=BaseSessionService)
     mock_session = MagicMock(spec=Session)
     mock_session.events = []
+    mock_session.state = {}
     runner.session_service.get_session = AsyncMock(return_value=mock_session)
+    runner.session_service.append_event = AsyncMock()
 
     runner.memory_service = MagicMock(spec=BaseMemoryService)
 
     runner.app_name = "test_app"
+    runner.agent.name = "root_agent"
     runner.auto_create_session = True
     return runner
 
@@ -125,6 +128,24 @@ async def test_reviewer_enforcement_approved(mock_runner, mock_reviewer_agent):
     assert "This is a good response." in review_message.parts[0].text
 
 
+def _revision_setup(mock_runner_cls, critique, revised_events):
+    """Wire the patched Runner class for a REVISION scenario.
+
+    The production code constructs TWO fresh Runners on the revision path:
+    first the review runner (in `_run_review`), then the revision runner
+    (isolated scratch session). `side_effect` hands each construction its
+    own mock, in that order.
+    """
+    review_runner = MagicMock()
+    review_runner.run_async = MagicMock(
+        side_effect=_async_gen(_make_event("reviewer_agent", critique))
+    )
+    revision_runner = MagicMock()
+    revision_runner.run_async = MagicMock(side_effect=_async_gen(*revised_events))
+    mock_runner_cls.side_effect = [review_runner, revision_runner]
+    return review_runner, revision_runner
+
+
 @pytest.mark.asyncio
 async def test_reviewer_enforcement_revision_triggers_revised_answer(
     mock_runner, mock_reviewer_agent
@@ -133,20 +154,21 @@ async def test_reviewer_enforcement_revision_triggers_revised_answer(
     EDUCATIONAL NOTE: Test Programmatic Reviewer Enforcement (REVISION)
     Streaming enforcement cannot retract already-streamed text, so on REVISION
     the runner emits the critique as a metadata notice and then runs exactly
-    ONE revision cycle — the stream must END with a real revised answer.
+    ONE revision cycle — the stream must END with a real revised answer. The
+    revision runs in an ISOLATED scratch session (fresh Runner + in-memory
+    session service), never through the wrapped runner's user session.
     """
     enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
 
-    draft_run = _async_gen(_make_event("some_sub_agent", "This response is bad."))
-    revision_run = _async_gen(_make_event("some_sub_agent", "This is the revised answer."))
-    mock_runner.run_async = MagicMock(side_effect=[draft_run(), revision_run()])
+    mock_runner.run_async = MagicMock(
+        side_effect=_async_gen(_make_event("some_sub_agent", "This response is bad."))
+    )
 
     with patch("orchestrator.reviewer.Runner") as mock_runner_cls:
-        review_runner = mock_runner_cls.return_value
-        review_runner.run_async = MagicMock(
-            side_effect=_async_gen(
-                _make_event("reviewer_agent", "REVISION: The tone is unprofessional.")
-            )
+        review_runner, revision_runner = _revision_setup(
+            mock_runner_cls,
+            "REVISION: The tone is unprofessional.",
+            [_make_event("some_sub_agent", "This is the revised answer.")],
         )
         events = await _collect(enforcement_runner)
 
@@ -162,13 +184,104 @@ async def test_reviewer_enforcement_revision_triggers_revised_answer(
     # The raw critique text must never appear as content in the stream.
     assert all("REVISION:" not in _text_of(e) for e in events)
 
-    # Exactly one revision cycle: draft run + revision run, review run once
-    # (the revised answer is NOT re-reviewed).
-    assert mock_runner.run_async.call_count == 2
+    # The wrapped runner (user session) ran ONLY for the draft; the revision
+    # went through a separate Runner, and it is NOT re-reviewed.
+    assert mock_runner.run_async.call_count == 1
     assert review_runner.run_async.call_count == 1
-    revision_message = mock_runner.run_async.call_args.kwargs["new_message"]
+    assert revision_runner.run_async.call_count == 1
+    revision_message = revision_runner.run_async.call_args.kwargs["new_message"]
     assert "The tone is unprofessional." in revision_message.parts[0].text
     assert "Hello" in revision_message.parts[0].text  # original request included
+
+    # The revision runner is built around the SAME root agent but an isolated
+    # in-memory session service — never the user's persistent one.
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+
+    revision_build = mock_runner_cls.call_args_list[1].kwargs
+    assert revision_build["agent"] is mock_runner.agent
+    assert isinstance(revision_build["session_service"], InMemorySessionService)
+    assert revision_build["session_service"] is not mock_runner.session_service
+
+
+@pytest.mark.asyncio
+async def test_revision_scaffolding_never_persists_in_user_session(
+    mock_runner, mock_reviewer_agent
+):
+    """
+    EDUCATIONAL NOTE: QA Scaffolding Must Not Persist as User History
+    An earlier version re-ran the wrapped runner in the USER session, so the
+    synthetic "automated QA retry" prompt was persisted as a user event —
+    later turns and history replays could see pipeline scaffolding. The user
+    session must gain exactly ONE event from a revision: the revised model
+    answer, appended via the session service API.
+    """
+    from google.adk.events import Event as AdkEvent
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+
+    # A user session with real prior history (the incident shape).
+    user_session = MagicMock(spec=Session)
+    user_session.state = {}
+    user_session.events = [
+        AdkEvent(
+            author="user",
+            content=types.Content(
+                role="user",
+                parts=[types.Part(text="Who is in the engineering department?")],
+            ),
+        ),
+        AdkEvent(
+            author="root_agent",
+            content=types.Content(role="model", parts=[types.Part(text="Alice.")]),
+        ),
+    ]
+    mock_runner.session_service.get_session = AsyncMock(return_value=user_session)
+
+    enforcement_runner = ReviewerEnforcementRunner(mock_runner, mock_reviewer_agent)
+    mock_runner.run_async = MagicMock(
+        side_effect=_async_gen(
+            _make_event(
+                "weather_sub_agent",
+                "The current weather in the engineering department is 81F.",
+            )
+        )
+    )
+
+    with patch("orchestrator.reviewer.Runner") as mock_runner_cls:
+        _, revision_runner = _revision_setup(
+            mock_runner_cls,
+            "REVISION: 'the engineering department' is not a location.",
+            [_make_event("weather_sub_agent", "Which city would you like?")],
+        )
+        events = await _collect(enforcement_runner, prompt="What's the weather like?")
+
+    # The stream still ends with the revised answer.
+    assert "Which city would you like?" in _text_of(events[-1])
+
+    # The synthetic prompt went ONLY to the isolated revision runner.
+    revision_message = revision_runner.run_async.call_args.kwargs["new_message"]
+    assert "automated QA retry" in revision_message.parts[0].text
+
+    # Exactly ONE write-back to the user session: the revised MODEL answer.
+    # No user-authored scaffolding event is ever appended.
+    append_calls = mock_runner.session_service.append_event.await_args_list
+    assert len(append_calls) == 1
+    appended_session, appended_event = append_calls[0].args
+    assert appended_session is user_session
+    assert appended_event.author == "weather_sub_agent"  # never "user"
+    appended_text = "".join(p.text or "" for p in appended_event.content.parts)
+    assert appended_text == "Which city would you like?"
+    assert "automated QA retry" not in appended_text
+
+    # The scratch session was seeded (via the service API) with copies of the
+    # user's history — and contains no scaffolding either at seed time.
+    scratch_service = mock_runner_cls.call_args_list[1].kwargs["session_service"]
+    assert isinstance(scratch_service, InMemorySessionService)
+    scratch_session = await scratch_service.get_session(
+        app_name="test_app", user_id="test_user", session_id="test_session"
+    )
+    assert [e.author for e in scratch_session.events] == ["user", "root_agent"]
+    # The user's own session object was never mutated by the seeding.
+    assert len(user_session.events) == 2
 
 
 @pytest.mark.asyncio

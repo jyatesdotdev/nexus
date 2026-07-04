@@ -39,7 +39,11 @@ uv run mypy orchestrator                            # strict type check
 
 Full-stack (all services in Docker): `cd ../nexus-stack && make up` / `make down` / `make test`. Health probes on a running server: `curl http://localhost:8080/health` and `curl http://localhost:8080/system-status`.
 
-Known state as of 2026-07-04: all 44 tests pass (25 pre-existing + 16 added with the trace-header/reviewer-wiring/A2A-discovery features + 3 net new with the streaming-safe reviewer semantics — see reviewer notes in `orchestrator/AGENTS.md`).
+Known state as of 2026-07-04: all 45 tests pass (25 pre-existing + 16 added with the trace-header/reviewer-wiring/A2A-discovery features + 3 net new with the streaming-safe reviewer semantics + 1 with the isolated-revision-session rework — see reviewer notes in `orchestrator/AGENTS.md`).
+
+## Active-agent handoff semantics
+
+Delegation in ADK is a TRANSFER, not a one-shot call: after the root agent transfers to a sub-agent, that sub-agent (not root) is the "active" agent that handles subsequent user turns, and it may transfer DIRECTLY to peer agents without going back through root. Verified against the installed google-adk (2.3.0): `AutoFlow` allows transfers parent→sub-agent, sub-agent→parent, and sub-agent→peers (peer transfers require the parent to be an `LlmAgent` and are on by default), and `Runner._find_agent_to_run` picks the LAST agent that replied — falling back to root only when that agent cannot transfer back up the tree. The opt-out knobs are `LlmAgent` fields `disallow_transfer_to_peers` and `disallow_transfer_to_parent` (both default `False`). For strict hub-and-spoke routing (every turn re-routed by root), set `disallow_transfer_to_peers=True` on each sub-agent so peers disappear from its transfer targets and handoffs must go via the root; do NOT set `disallow_transfer_to_parent=True` on sub-agents — that strands the sub-agent (it can never hand back). This repo deliberately keeps the ADK defaults (educational lab); this section documents the behavior, it does not change routing config.
 
 ## Caution / do not modify
 

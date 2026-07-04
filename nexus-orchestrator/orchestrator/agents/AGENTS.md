@@ -30,6 +30,10 @@ uv run pytest tests/test_initialization.py tests/test_orchestrator.py
 
 `tests/test_initialization.py` asserts the multi-URL fallback naming scheme (`mcp_agent_0`, `a2a_agent_1`, ...); `tests/test_a2a_discovery.py` covers card-derived naming, URL normalization, and the unreachable-endpoint skip. LLM routing quality is measured separately with `uv run python main.py evals` (needs a real API key).
 
+## Active-agent handoff semantics
+
+After the root agent transfers to one of these sub-agents, the transferred-to agent — not root — handles the NEXT user turns, and it may transfer directly to peer sub-agents. This is the ADK default (verified on installed google-adk 2.3.0): `AutoFlow` permits parent→sub, sub→parent, and sub→peer transfers, gated per-agent by the `LlmAgent` fields `disallow_transfer_to_peers` / `disallow_transfer_to_parent` (both default `False`), and `Runner._find_agent_to_run` keeps the last-replying transferable agent active for the following user message. To opt into strict hub-and-spoke routing, set `disallow_transfer_to_peers=True` on each sub-agent factory here (peers vanish from its transfer targets, so handoffs must bounce through root); leave `disallow_transfer_to_parent` alone or the sub-agent can never hand back. Current config intentionally keeps the defaults.
+
 ## Caution
 
 - Do not rename registered agent names without updating `orchestrator/eval_cases.py`, `orchestrator/app.py` (reviewer exclusion), and tests. A2A agent names now come from each service's agent card — renaming a card (e.g. in nexus-a2a/server.py) renames the registered agent and must be reflected in `eval_cases.py`.
