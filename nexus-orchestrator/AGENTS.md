@@ -7,13 +7,12 @@ Sibling repos in the workspace: nexus-a2a (weather A2A server), nexus-mcp (HR di
 ## Files at this level
 
 - `main.py` — Intentionally tiny (4 lines). Entry point that imports and runs the Click CLI from `orchestrator/cli.py`. Used for local runs (`python main.py chat|serve|evals`). The Docker image does NOT run main.py; it runs Gunicorn against `orchestrator.asgi:app`.
-- `core` — Zero-byte junk file (probably an accidental core-dump artifact or shell redirect). It is not referenced anywhere. Safe to delete; do not confuse it with a package.
 - `Dockerfile` — Multi-stage build (python:3.14-slim), non-root `appuser`, healthcheck on `GET /health`. IMPORTANT: the build context is the workspace root, not this repo — it does `COPY nexus-orchestrator/requirements.txt` and `COPY nexus-common /nexus-common`. Build it from the parent directory (nexus-stack's compose file does this). Runtime command: `gunicorn orchestrator.asgi:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080`. Sets `PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc` (required for correct Prometheus metrics across Gunicorn workers) and wipes that dir on start.
 - `requirements.txt` — Runtime and dev dependencies together (google-adk, a2a-sdk, mcp[sse], fastapi, redis, asyncpg, pgvector, pytest, ruff, mypy...). Ends with `-e ../nexus-common`, so installing requires the sibling nexus-common checkout to exist. Note: SQLAlchemy (used by `orchestrator/persistence/`) is not pinned here; it arrives transitively via google-adk.
 - `pyproject.toml` — Only tool config: Ruff targets py310, Mypy strict. There is no build/packaging section; the project is not pip-installable as a package.
 - `pytest.ini` — Sets `asyncio_mode = strict` (every async test needs `@pytest.mark.asyncio`) and silences DeprecationWarning/UserWarning.
-- `README.md` — Human-facing overview. Mostly accurate but has stale spots: it says the root agent lives in `main.py` (it is in `orchestrator/app.py`), mentions Jaeger (the stack now uses Grafana Tempo via nexus-dev-infra; the OTLP endpoint is just an env var), and shows `AGENT_MODEL=gemini-1.5-flash` in one example (real default is `gemini-2.5-flash`).
-- `CHANGELOG.md` — Historical notes. The "src layout / src/agent_app/" entry describes a structure that no longer exists.
+- `README.md` — Human-facing overview. Refreshed 2026-07-03: root agent documented at `orchestrator/app.py`, tracing via Grafana Tempo (OTLP endpoint env var), default model `gemini-2.5-flash`.
+- `CHANGELOG.md` — Reverse-chronological notes; newest entry goes at the top. Older entries are historical (e.g. the "src layout / src/agent_app/" entry describes a structure that no longer exists — leave history as-is).
 - `.dockerignore` / `.gitignore` — Standard excludes. `.env` is git-ignored; secrets never go in the repo.
 
 ## Subdirectories
@@ -41,12 +40,11 @@ python3 -m venv venv                                # once
 
 Full-stack (all services in Docker): `cd ../nexus-stack && make up` / `make down` / `make test`. Health probes on a running server: `curl http://localhost:8080/health` and `curl http://localhost:8080/system-status`.
 
-Known state as of 2026-07: 2 tests in `tests/test_reviewer_enforcement.py` fail ("'MagicMock' object can't be awaited"); the other 23 pass.
+Known state as of 2026-07-03: all 25 tests pass (the previously failing reviewer-enforcement mocks were repaired).
 
 ## Caution / do not modify
 
 - Do not commit `.env`, `venv/`, or cache directories.
 - Do not move `main.py` or rename `orchestrator.asgi:app` without updating the Dockerfile CMD and nexus-stack's compose config.
 - The Dockerfile's COPY paths assume the workspace-root build context; changing them breaks the nexus-stack build.
-- The zero-byte `core` file is junk, not code — deleting it is fine, depending on it is not.
 - Project convention: explanatory architecture comments in code use the `# EDUCATIONAL NOTE:` prefix; keep that convention when adding commentary.

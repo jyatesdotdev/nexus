@@ -1,5 +1,13 @@
 # Changelog - Nexus Core
 
+## [Refinement] - 2026-07-03
+- **Bugfix (Sessions):** `middleware.py` now calls `session_service.get_session` with the ADK keyword-only arguments and only creates a session when one does not exist; previously the positional call always raised, so every `/run_sse` request re-created the session and wiped chat history on the Redis backend.
+- **Bugfix (Adapters):** `orchestrator/adapters/__init__.py` now imports the adapter modules so `LLMRegistry` registration runs at startup; `AGENT_MODEL=ollama/...` works in production again.
+- **Bugfix (Tracing):** Fixed `get_propagated_headers` to import `TRACE_STORE` from `orchestrator.middleware` (was a swallowed ImportError from `orchestrator.app`, leaving the trace-propagation fallback dead).
+- **Bugfix (Agents):** Attached the `get_sensor_reading` tool to `sensor_agent`, matching its instruction and the sensor eval case.
+- **Testing:** Repaired `tests/test_reviewer_enforcement.py` mocks (async-generator side effects, patched reviewer `Runner`) — full suite passes again.
+- **Docs:** Converted `GEMINI.md` into per-directory `AGENTS.md` files; refreshed `README.md` (root agent lives in `orchestrator/app.py`, tracing via Grafana Tempo, default model `gemini-2.5-flash`); removed the stray zero-byte `core` file.
+
 ## [Initial State] - 2026-03-21
 - Resolved `GEMINI_API_KEY` missing error by loading `.env` correctly.
 - Added command-line prompt support to `agent.py`.
@@ -15,6 +23,13 @@
 
 ## [Testing] - 2026-03-21
 - **Bugfix:** Updated all model references to `gemini-2.5-flash` to resolve 404 availability errors.
+
+## [Refinement] - 2026-03-27
+- **Persistence:** Integrated Redis and PostgreSQL support for long-term memory and session state.
+- **Observability:** Added OpenTelemetry instrumentation for distributed tracing via Jaeger.
+- **Orchestration:** Implemented the Critic/Reviewer pattern with a dedicated `reviewer_agent`.
+- **Security:** Implemented Identity Propagation via mock JWT tokens across service boundaries.
+- **Standards:** Enhanced educational notes and type safety across the orchestrator logic.
 
 ## [Project Structure] - 2026-03-21
 - **Architecture:** Migrated to the modern Python **`src` layout** for better code/test isolation.

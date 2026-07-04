@@ -7,5 +7,5 @@ tests
 .git
 .gitignore
 .env
-GEMINI.md
+**/AGENTS.md
 README.md

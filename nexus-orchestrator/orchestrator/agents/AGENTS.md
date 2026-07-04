@@ -7,7 +7,7 @@ Loading gotcha: `load_agents_from_module` walks and imports/reloads every module
 ## Files
 
 - `core_agents.py` — Six always-on agents, each a `@AgentRegistry.register("<name>")`-decorated factory returning an ADK `LlmAgent`:
-  - `sensor_agent` — IoT sensor analysis. Has NO tools (the mock `get_sensor_reading` tool exists in `../tools.py` but is not attached — the agent answers from the prompt alone).
+  - `sensor_agent` — IoT sensor analysis; tool `get_sensor_reading` (mock data: temperature 22.5, humidity 45.0).
   - `metric_agent` — DevOps metrics; tool `query_prometheus_metric` (real Prometheus query with mock fallback).
   - `api_agent` — YNAB budget lookups; tool `fetch_ynab_budget` (mock data, always $150.00).
   - `parsing_agent` — entity extraction; tool `extract_entities_with_grounding` (mock).
@@ -17,7 +17,7 @@ Loading gotcha: `load_agents_from_module` walks and imports/reloads every module
 - `dynamic_agents.py` — `register_dynamic_agents()` registers remote agents from config at startup:
   - One MCP agent per URL in `MCP_SERVER_URLS` (from `orchestrator/config.py`). Named `mcp_agent` when there is exactly one URL, else `mcp_agent_0`, `mcp_agent_1`, ... Uses ADK `McpToolset` over SSE with `require_confirmation=False` (tools run without human approval — set True for destructive tools). Talks to the nexus-mcp HR directory server.
   - One A2A agent per URL in `A2A_AGENT_URLS`. Named `weather_a2a_agent` for a single URL, else `a2a_agent_0`, ... Uses ADK `RemoteA2aAgent` pointed at the agent-card URL (nexus-a2a weather server, default `http://a2a-agent:8001/.well-known/agent-card.json`).
-  - `get_propagated_headers(user_id, session_id)` builds outgoing headers for both: `Authorization: Bearer <user_id>` (mock-JWT identity propagation) plus OpenTelemetry `traceparent` via `inject()`. KNOWN BUG: its fallback does `from orchestrator.app import TRACE_STORE`, but `TRACE_STORE` actually lives in `orchestrator/middleware.py`; the ImportError is swallowed by the surrounding `except ImportError`, so the session-mapped trace fallback never fires. If you fix the import, import from `orchestrator.middleware`.
+  - `get_propagated_headers(user_id, session_id)` builds outgoing headers for both: `Authorization: Bearer <user_id>` (mock-JWT identity propagation) plus OpenTelemetry `traceparent` via `inject()`. When `inject()` finds an empty OTel context, it falls back to the session-mapped `TRACE_STORE` imported lazily from `orchestrator.middleware` (where it is defined and populated) — keep that import path in sync if `TRACE_STORE` ever moves.
   - The factory closures capture `url`/`name` via default arguments — keep that pattern or every agent will bind to the last loop value.
 - `__init__.py` — Empty.
 
