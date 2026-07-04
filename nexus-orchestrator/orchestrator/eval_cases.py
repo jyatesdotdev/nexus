@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 class EvalCase(BaseModel):
     name: str
@@ -16,17 +16,20 @@ class EvalCase(BaseModel):
 
 EVAL_CASES = [
     # 1. Routing: Weather Agent
+    # NOTE: A2A agents are now named from their discovered agent card
+    # (see orchestrator/agents/dynamic_agents.py). nexus-a2a's card name is
+    # "Weather Sub-Agent", which sanitizes to "weather_sub_agent".
     EvalCase(
         name="weather_paris",
         input="What is the weather like in Paris today?",
-        expected_agent="weather_a2a_agent",
+        expected_agent="weather_sub_agent",
         expected_keywords=["Paris", "weather", "temperature"],
         description="Verify routing to Weather Agent and city extraction."
     ),
     EvalCase(
         name="weather_london",
         input="Give me the forecast for London.",
-        expected_agent="weather_a2a_agent",
+        expected_agent="weather_sub_agent",
         expected_keywords=["London", "forecast"],
         description="Verify routing to Weather Agent."
     ),

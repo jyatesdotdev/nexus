@@ -27,6 +27,7 @@ The orchestrator is the single entry point for user requests. It routes each req
 | `nexus-stack/` | Deployment hub: docker-compose for the four app services, the cross-service Makefile (`make up/test/lint/verify-all`), `.env` secrets, workspace-wide Semgrep rules. |
 | `nexus-integration/` | Live-container integration tests (A2A discovery, Redis/Postgres persistence), run inside the orchestrator container via nexus-stack's `make test`. |
 | `.kiro/steering/` | Workspace-wide steering docs: `product.md` (architecture and domain concepts), `structure.md` (layout and per-service conventions), `tech.md` (stack, quality rules, ports, env vars). Read these before cross-service changes. |
+| `.github/` | CI workflow (`workflows/ci.yml`): path-filtered per-service lint/type/unit jobs plus Semgrep and static Checkov. Evals and stack-dependent suites are deliberately excluded (comments in the yaml explain why). |
 
 Each of these directories has its own AGENTS.md with per-file detail; nested directories (e.g. `nexus-orchestrator/orchestrator/persistence/`, `nexus-ui/src/components/`) have their own as well.
 
@@ -59,4 +60,7 @@ Per-service dev loops are documented in each service's AGENTS.md. Requires `GEMI
 
 ## Files at this level
 
-- `AGENTS.md` — this file. The only file that belongs at the workspace root; everything else lives inside a service directory.
+- `AGENTS.md` — this file.
+- `.gitignore` — workspace-level ignores (venvs, node_modules, caches, `.env`, `*.db`, IDE dirs). Service directories layer their own `.gitignore` on top.
+
+Everything else lives inside a service directory (or `.kiro/` / `.github/`).

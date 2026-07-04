@@ -110,7 +110,7 @@ async def query_prometheus_metric(query: str) -> MetricValue:
                     return MetricValue(status="success", query=query, value=value, unit="value")
                 return MetricValue(status="success", query=query, value=0.0, unit="no_data")
             return MetricValue(status="error", query=query, value=0.0, unit=f"HTTP_{resp.status_code}")
-    except Exception as e:
+    except Exception:
         # Fallback to mock data for local development if Prometheus is unreachable
         return MetricValue(status="mock", query=query, value=95.4, unit="CPU %")
 

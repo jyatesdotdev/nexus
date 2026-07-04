@@ -27,9 +27,27 @@ def get_env_list(var_name: str, default: str) -> list[str]:
 MCP_SERVER_URLS = get_env_list(
     "MCP_SERVER_URLS", os.getenv("MCP_SERVER_URL", "http://mcp-server:8000/sse")
 )
+# EDUCATIONAL NOTE: Config-Driven A2A Discovery
+# [Why] Each entry may be either a service base URL (e.g. http://a2a-agent:8001)
+# or a full agent-card URL. At startup, orchestrator/agents/dynamic_agents.py
+# fetches `{url}/.well-known/agent-card.json` for every entry and registers one
+# sub-agent per card, so adding a new A2A service to the stack only requires
+# appending its URL here — no code changes.
 A2A_AGENT_URLS = get_env_list(
     "A2A_AGENT_URLS",
     os.getenv("A2A_AGENT_URL", "http://a2a-agent:8001/.well-known/agent-card.json"),
+)
+
+# REVIEWER ENFORCEMENT: Toggles the programmatic Critic/Reviewer pattern.
+# EDUCATIONAL NOTE: [Why] The reviewer-critic pattern is a showcase feature of this
+# lab, but being able to switch it OFF at runtime lets a demo contrast reviewed vs.
+# unreviewed responses. When on (the default), every runner — CLI, evals, and the
+# HTTP /run_sse path — is wrapped in ReviewerEnforcementRunner (see reviewer.py).
+REVIEWER_ENFORCEMENT = os.getenv("REVIEWER_ENFORCEMENT", "true").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
 )
 
 APP_NAME = "containerized_agents"

@@ -3,7 +3,7 @@
 ## [Routing E2E + CI] - 2026-07-04
 - **New test:** Added `test_routing_integration.py` — true end-to-end routing checks
   against a live stack via the orchestrator's `POST /run_sse` SSE endpoint. A weather
-  prompt must be delegated to `weather_a2a_agent` and an HR prompt to `mcp_agent`;
+  prompt must be delegated to `weather_sub_agent` and an HR prompt to `mcp_agent`;
   delegation is asserted from event `author` fields and `actions.transferToAgent`, plus a
   non-empty final answer, all under a hard 120 s stream timeout. Configurable via
   `ORCHESTRATOR_URL` (default `http://localhost:8080`); skips cleanly (`pytest.skip`)

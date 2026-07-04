@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, List, cast
+from typing import Any, Optional, List
 from sqlalchemy import String, JSON, select, delete
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column

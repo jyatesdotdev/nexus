@@ -22,8 +22,8 @@ The `root_agent` is the entry point for all user interactions. It is configured 
 **Sub-Agents managed by the Orchestrator:**
 - **Local Specialized Agents**: `sensor_agent` (IoT), `metric_agent` (DevOps), `api_agent` (Finance), `parsing_agent` (Data Extraction), and `system_agent` (Bash commands).
 - **MCP Agent**: A remote sub-agent that connects to a SQLite database via an MCP server using SSE transport.
-- **A2A Agent**: A remote weather agent discovered dynamically via its `.well-known/agent-card.json`. It supports identity-aware forecasting.
-- **Reviewer Agent**: A dedicated QA sub-agent that critiques responses before they reach the user (Critic Pattern).
+- **A2A Agents**: Remote agents discovered dynamically at startup from `A2A_AGENT_URLS`. Each service's `.well-known/agent-card.json` is fetched and one sub-agent is registered per card, taking its name and description from the card (the default weather agent's card is named "Weather Sub-Agent", registered as `weather_sub_agent`). Unreachable endpoints are logged and skipped.
+- **Reviewer Agent**: A dedicated QA sub-agent that critiques responses before they reach the user (Critic Pattern). Enforcement is applied programmatically on **both** the CLI/evals path and the HTTP `/run_sse` path, and can be toggled with `REVIEWER_ENFORCEMENT` (default: on).
 
 ### 2. Model Adapters (`adapters/`)
 The Orchestrator is not locked into Gemini. It uses the ADK's `BaseLlm` interface to support diverse models:
@@ -63,6 +63,9 @@ The Orchestrator is instrumented with **OpenTelemetry**. When configured, it emi
 OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4318/v1/traces
 OTEL_SERVICE_NAME=orchestrator
 ```
+
+### Trace ID Exposure (`X-Trace-Id`)
+Every `POST /run_sse` response (including 401/404 rejections) carries an `X-Trace-Id` response header with the current OpenTelemetry trace id (32-character lowercase hex). The header is attached before the SSE body starts streaming, and it is listed in `Access-Control-Expose-Headers` so the UI (a different origin, e.g. `localhost:5173` vs `:8080`) can read it and deep-link into Grafana Tempo. When no OTel provider is configured (local dev without the tracing stack), a random well-formed id is emitted so the contract stays stable.
 
 ---
 
@@ -151,9 +154,16 @@ POSTGRES_URL=postgresql+asyncpg://nexus:password@localhost:5432/nexus_dev
 - **In-Memory**: Default behavior. Data is lost when the orchestrator stops.
 
 **Other Configuration:**
-The following environment variables can be set to configure the remote agents:
-- `MCP_SERVER_URL`: URL of the MCP server (default: `http://mcp-server:8000/sse`).
-- `A2A_AGENT_URL`: URL of the A2A agent's card (default: `http://a2a-agent:8001/.well-known/agent-card.json`).
+The following environment variables can be set to configure the remote agents and governance:
+- `MCP_SERVER_URLS`: Comma-separated MCP server URLs (default: `http://mcp-server:8000/sse`; legacy single-value fallback `MCP_SERVER_URL`).
+- `A2A_AGENT_URLS`: Comma-separated A2A endpoints (default: `http://a2a-agent:8001/.well-known/agent-card.json`; legacy single-value fallback `A2A_AGENT_URL`). Each entry may be a service base URL (e.g. `http://a2a-agent:8001`) or a full agent-card URL. At startup the orchestrator fetches each `{url}/.well-known/agent-card.json` and registers one sub-agent per card, using the card's name and description for routing — adding a new A2A service to the stack only requires appending its URL here. Unreachable endpoints are logged and skipped (the orchestrator still boots).
+- `REVIEWER_ENFORCEMENT`: `true` (default) or `false`. When on, every response — CLI, evals, and HTTP `/run_sse` — is programmatically routed through the `reviewer_agent` critic after generation (`Runner → LoopDetectionRunner → ReviewerEnforcementRunner`). Set to `false` to demo unreviewed behavior.
+
+```env
+# Example: two A2A services, reviewer switched off for a demo
+A2A_AGENT_URLS=http://a2a-agent:8001,http://stock-agent:8002
+REVIEWER_ENFORCEMENT=false
+```
 
 ### CLI Mode (One-off Prompt)
 ```bash

@@ -1,5 +1,4 @@
 import pytest
-import logging
 from typing import Tuple, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 

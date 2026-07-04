@@ -33,7 +33,7 @@ already ships every dependency they import (`pytest`, `pytest-asyncio`, `httpx`,
 - **HOW**: Each test sends a natural-language prompt taken from the orchestrator's own
   routing baseline (`orchestrator/eval_cases.py`), consumes the SSE event stream to
   completion under a hard 120-second timeout, and asserts (a) a non-empty final answer
-  and (b) that the expected sub-agent (`weather_a2a_agent` or `mcp_agent`) appears in the
+  and (b) that the expected sub-agent (`weather_sub_agent` or `mcp_agent`) appears in the
   stream. Delegation is detected from ADK event `author` fields and
   `actions.transferToAgent` — the same fields that drive the UI's "Delegating to ..."
   banner.

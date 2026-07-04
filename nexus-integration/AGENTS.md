@@ -37,7 +37,7 @@ every dependency the tests import (`pytest`, `pytest-asyncio`, `httpx`, `redis`,
   running.
 - `test_routing_integration.py` — two async tests exercising true end-to-end routing
   through the orchestrator's `POST /run_sse` endpoint (the same endpoint the React UI
-  calls): a weather prompt that must be delegated to `weather_a2a_agent` and an HR prompt
+  calls): a weather prompt that must be delegated to `weather_sub_agent` and an HR prompt
   that must be delegated to `mcp_agent`. Each test POSTs a prompt (with the UI's mock
   JWT as `user_id` and a fresh `session_id`), consumes the SSE stream to completion under
   a hard 120 s timeout, asserts a non-empty final answer, and asserts the expected

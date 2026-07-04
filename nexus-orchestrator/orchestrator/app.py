@@ -1,5 +1,5 @@
 import warnings
-from typing import List, Optional, Any
+from typing import Optional, Any
 from contextlib import asynccontextmanager
 
 from google.adk.agents.llm_agent import LlmAgent as Agent
@@ -8,6 +8,7 @@ from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.genai.types import Content, Part
 
+from orchestrator import config
 from orchestrator.config import (
     AGENT_MODEL,
     APP_NAME,
@@ -20,7 +21,7 @@ from orchestrator.config import (
 from orchestrator.persistence.redis_services import RedisSessionService, RedisMemoryService
 from orchestrator.persistence.postgres_services import PostgresMemoryService
 from orchestrator.persistence.database_services import DatabaseSessionService
-from orchestrator.reviewer import ReviewerEnforcementRunner
+from orchestrator.reviewer import LoopDetectionRunner, build_governed_runner  # noqa: F401  (LoopDetectionRunner re-exported for compatibility)
 from orchestrator.registry.agent_registry import AgentRegistry
 
 # Register foundation model adapters
@@ -95,26 +96,6 @@ root_agent = initialize_agents()
 # 3. Execution Runners
 # ==========================================
 
-class LoopDetectionRunner:
-    """Detects infinite loops between sub-agents."""
-    def __init__(self, runner: Any):
-        self._runner = runner
-
-    async def run_async(self, *args: Any, **kwargs: Any) -> Any:
-        author_sequence: List[str] = []
-        async for event in self._runner.run_async(*args, **kwargs):
-            if hasattr(event, "author") and getattr(event, "author", None):
-                author = event.author
-                if not author_sequence or author_sequence[-1] != author:
-                    author_sequence.append(author)
-                    if len(author_sequence) > 10:
-                        print("Loop detected in agent messages!")
-            yield event
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._runner, name)
-
-
 @asynccontextmanager
 async def get_runner(agent: Agent) -> Any:
     """
@@ -128,13 +109,15 @@ async def get_runner(agent: Agent) -> Any:
         auto_create_session=True
     )
 
-    runner = LoopDetectionRunner(runner)
-
     # EDUCATIONAL NOTE: Programmatic Reviewer Enforcement
-    if hasattr(agent, "sub_agents") and agent.sub_agents:
-        reviewer_agent = next((a for a in agent.sub_agents if a.name == "reviewer_agent"), None)
-        if reviewer_agent:
-            runner = ReviewerEnforcementRunner(runner, reviewer_agent)
+    # The governance pipeline (loop detection + reviewer enforcement) is built by
+    # orchestrator.reviewer.build_governed_runner so the CLI/evals path here and
+    # the HTTP path in server.py share identical behavior. REVIEWER_ENFORCEMENT
+    # is read via the config module attribute (not a from-import) so tests and
+    # demos can toggle it with a config reload / patch.
+    runner = build_governed_runner(
+        runner, agent, enforce_review=config.REVIEWER_ENFORCEMENT
+    )
 
     try:
         yield runner

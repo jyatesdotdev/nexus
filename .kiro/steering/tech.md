@@ -90,13 +90,18 @@ npm run test:e2e     # playwright (needs live Docker stack)
 ### Full stack (run from nexus-stack/)
 
 ```bash
+make doctor          # preflight: docker, .env/API key, nexus-net, node/npm
 make up              # infra + app services
+make demo            # guided scripted conversation with trace links (stack must be up)
 make down            # stop everything
 make test            # unit + integration across all services
 make lint            # ruff + eslint
 make type-check      # mypy + tsc
 make verify-all      # lint + type-check + evals + semgrep + checkov
 ```
+
+CI: `.github/workflows/ci.yml` runs path-filtered lint/type/unit/Semgrep on push and PR;
+evals and stack-dependent suites are excluded (see comments in the workflow).
 
 ### Database migrations (nexus-mcp/)
 
@@ -135,6 +140,11 @@ alembic revision --autogenerate -m "description"
 | `GEMINI_API_KEY` | LLM API key | (required) |
 | `AGENT_MODEL` | Model selection | `gemini-2.5-flash` |
 | `OLLAMA_BASE_URL` | Local model endpoint | — |
-| `PERSISTENCE_BACKEND` | `in_memory` / `redis` / `postgres` | `in_memory` |
+| `PERSISTENCE_BACKEND` | `in_memory` / `redis` / `postgres` | `in_memory` (bare config); `redis` in the compose stack |
 | `DATABASE_URL` | PostgreSQL/SQLite connection | `sqlite:///hr.db` (MCP) |
+| `A2A_AGENT_URLS` | Comma-separated A2A endpoints for dynamic discovery; agents named from their cards | in-stack a2a-agent card URL |
+| `REVIEWER_ENFORCEMENT` | Reviewer-critic pass on all responses (CLI + HTTP) | `true` |
 | `VITE_API_BASE_URL` | Frontend API target | `http://localhost:8080` |
+| `VITE_GRAFANA_URL` | Frontend Tempo trace links (build-time) | `http://localhost:3000` |
+
+`nexus-stack/.env.example` is the canonical env-var reference.

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock
 
 # EDUCATIONAL NOTE: Testing Distributed Caching
 # We mock the Redis client to verify key-value storage and retrieval logic.

@@ -1,4 +1,5 @@
-from unittest.mock import patch, MagicMock
+import pytest
+from unittest.mock import patch, AsyncMock, MagicMock
 from typing import Any
 
 from orchestrator.tools import (
@@ -22,9 +23,6 @@ def test_get_sensor_reading() -> None:
     assert result.sensor_id == "sensor_1"
     assert result.temperature == 22.5
 
-
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 
 @pytest.mark.asyncio
 async def test_query_prometheus_metric() -> None:

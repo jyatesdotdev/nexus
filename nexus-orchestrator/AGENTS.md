@@ -23,7 +23,7 @@ Sibling repos in the workspace: nexus-a2a (weather A2A server), nexus-mcp (HR di
 
 ## How to run and test
 
-Environment: create a `.env` file (or export vars) with at least `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). The CLI refuses to start without one. Optional: `AGENT_MODEL` (default `gemini-2.5-flash`; `ollama/llama3` for local), `PERSISTENCE_BACKEND` (`in_memory` default, `redis`, or `postgres`), `MCP_SERVER_URLS`, `A2A_AGENT_URLS`.
+Environment: create a `.env` file (or export vars) with at least `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). The CLI refuses to start without one. Optional: `AGENT_MODEL` (default `gemini-2.5-flash`; `ollama/llama3` for local), `PERSISTENCE_BACKEND` (`in_memory` default, `redis`, or `postgres`), `MCP_SERVER_URLS`, `A2A_AGENT_URLS` (comma-separated A2A endpoints — base or agent-card URLs — discovered via each service's agent card at startup), `REVIEWER_ENFORCEMENT` (`true` default; toggles the programmatic reviewer-critic pipeline on both the CLI and HTTP paths).
 
 ```bash
 cd /Users/jyates/Repositories/nexus/nexus-orchestrator
@@ -40,7 +40,7 @@ python3 -m venv venv                                # once
 
 Full-stack (all services in Docker): `cd ../nexus-stack && make up` / `make down` / `make test`. Health probes on a running server: `curl http://localhost:8080/health` and `curl http://localhost:8080/system-status`.
 
-Known state as of 2026-07-03: all 25 tests pass (the previously failing reviewer-enforcement mocks were repaired).
+Known state as of 2026-07-04: all 41 tests pass (25 pre-existing + 16 added with the trace-header/reviewer-wiring/A2A-discovery features).
 
 ## Caution / do not modify
 

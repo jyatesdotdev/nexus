@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Dict, Any, Callable, Awaitable
 from fastapi import Request, Response
 from starlette.requests import Request as StarletteRequest
@@ -11,6 +12,33 @@ from orchestrator.config import APP_NAME, DEFAULT_USER_ID
 # TRACE_STORE provides a request-scoped fallback mapped to the session_id,
 # ensuring the orchestrator's trace ID is propagated to all downstream agents.
 TRACE_STORE: Dict[str, Dict[str, str]] = {}
+
+# Response header carrying the OpenTelemetry trace id to the UI. The value is
+# part of the orchestrator<->nexus-ui contract: the UI reads it to build
+# "view this request in Grafana Tempo" deep links.
+TRACE_ID_HEADER = "X-Trace-Id"
+
+
+def get_current_trace_id() -> str:
+    """Returns the current OpenTelemetry trace id as 32-char lowercase hex.
+
+    EDUCATIONAL NOTE: Trace ID Exposure
+    [Why] The UI runs on a different origin and cannot see the server's OTel
+    context, so we surface the trace id as a response header. When no OTel
+    TracerProvider is configured (e.g. local dev without the Tempo stack, or
+    unit tests), the current span is INVALID (trace_id 0); we then fall back
+    to a random 32-hex id so the response contract stays stable — the header
+    is always present and always well-formed, it just won't resolve in Tempo.
+    """
+    try:
+        from opentelemetry import trace
+
+        span_context = trace.get_current_span().get_span_context()
+        if span_context.trace_id:
+            return format(span_context.trace_id, "032x")
+    except Exception:
+        pass
+    return uuid.uuid4().hex
 
 def setup_middleware(app: Any, session_service: Any) -> None:
     """
@@ -26,6 +54,16 @@ def setup_middleware(app: Any, session_service: Any) -> None:
     async def validate_identity_and_session(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         # We only strictly enforce validation on the core execution endpoint
         if request.url.path == "/run_sse" and request.method == "POST":
+            # EDUCATIONAL NOTE: Trace ID Response Header & SSE
+            # [Why] /run_sse streams Server-Sent Events, so headers must be
+            # attached BEFORE the body starts streaming. Starlette's http
+            # middleware receives the response object after the endpoint
+            # produced `http.response.start` but before anything is sent to
+            # the client, so mutating response.headers here is still safe.
+            # We capture the trace id up-front, while the OTel server span
+            # (opened by the outer FastAPIInstrumentor middleware) is active.
+            trace_id = get_current_trace_id()
+
             # [Fix] Robust body replaying for Starlette/FastAPI middleware
             body = await request.body()
             
@@ -41,10 +79,13 @@ def setup_middleware(app: Any, session_service: Any) -> None:
                 
                 # 1. Identity Validation
                 if not verify_token(token):
-                    return Response(
-                        content="INVALID_IDENTITY: Please provide a valid Nexus JWT token.", 
+                    rejection = Response(
+                        content="INVALID_IDENTITY: Please provide a valid Nexus JWT token.",
                         status_code=401
                     )
+                    # Even rejections carry the trace id so failures are debuggable.
+                    rejection.headers[TRACE_ID_HEADER] = trace_id
+                    return rejection
                 
                 # 2. Session Auto-Creation
                 session_id = data.get("session_id")
@@ -77,5 +118,9 @@ def setup_middleware(app: Any, session_service: Any) -> None:
                         )
             except Exception:
                 pass
-                
+
+            response = await call_next(request)
+            response.headers[TRACE_ID_HEADER] = trace_id
+            return response
+
         return await call_next(request)

@@ -145,7 +145,7 @@ async def _run_prompt(prompt: str) -> tuple[str, set[str]]:
 
 # EDUCATIONAL NOTE: The prompts and expected agent names below come straight from the
 # orchestrator's own routing baseline (orchestrator/eval_cases.py), so this test and the
-# LLM evals agree on what "correct routing" means. The names 'weather_a2a_agent' and
+# LLM evals agree on what "correct routing" means. The names 'weather_sub_agent' and
 # 'mcp_agent' are assigned in orchestrator/agents/dynamic_agents.py when exactly one
 # A2A/MCP URL is configured — the default in nexus-stack/docker-compose.yml.
 @pytest.mark.asyncio
@@ -156,8 +156,8 @@ async def test_weather_prompt_routes_to_a2a_agent():
     answer, agents_seen = await _run_prompt("What is the weather like in Paris today?")
 
     assert answer.strip(), "Expected a non-empty final answer from the orchestrator."
-    assert "weather_a2a_agent" in agents_seen, (
-        "Expected delegation to 'weather_a2a_agent' (A2A protocol), but the stream "
+    assert "weather_sub_agent" in agents_seen, (
+        "Expected delegation to 'weather_sub_agent' (A2A protocol), but the stream "
         f"only showed these agents: {sorted(agents_seen)}. Answer was: {answer!r}"
     )
 
