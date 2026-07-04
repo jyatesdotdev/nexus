@@ -6,9 +6,10 @@ agent" (Google ADK) that delegates work to sub-agents and remote services via
 the A2A protocol and MCP. nexus-ui is the browser dashboard for that system: a
 chat interface that POSTs user messages to the orchestrator's `/run_sse`
 endpoint and renders the Server-Sent Events (SSE) stream in real time
-(including LLM token deltas, agent-delegation notices, and human-in-the-loop
-approval prompts), plus a health grid that polls the orchestrator's
-`/system-status` endpoint every 5 seconds. Sibling repos in the workspace:
+(including LLM token deltas, agent-delegation notices, human-in-the-loop
+approval prompts, and per-message Grafana Tempo trace links from the
+orchestrator's `X-Trace-Id` response header), plus a health grid that polls
+the orchestrator's `/system-status` endpoint every 5 seconds. Sibling repos in the workspace:
 nexus-orchestrator (the backend this UI talks to), nexus-a2a, nexus-mcp,
 nexus-common, nexus-dev-infra, nexus-stack (docker-compose that builds and runs
 this UI as the `frontend` service).
@@ -17,9 +18,11 @@ Stack: React 19, TypeScript (strict), Vite, Tailwind CSS v4 (configured in CSS,
 no tailwind.config.js), react-markdown, Vitest + React Testing Library (unit),
 Playwright (e2e), OpenTelemetry web SDK (traces + metrics). The
 runtime-relevant environment variables are `VITE_API_BASE_URL` (orchestrator
-base URL, default `http://localhost:8080`) and `VITE_OTEL_EXPORTER_URL` (OTLP
-collector base URL, default `http://localhost:4319`); note Vite inlines env
-vars at **build** time, so a production bundle bakes the values in.
+base URL, default `http://localhost:8080`), `VITE_OTEL_EXPORTER_URL` (OTLP
+collector base URL, default `http://localhost:4319`), and `VITE_GRAFANA_URL`
+(Grafana base URL for per-message trace deep links, default
+`http://localhost:3000`); note Vite inlines env vars at **build** time, so a
+production bundle bakes the values in.
 
 ## Files at this level
 

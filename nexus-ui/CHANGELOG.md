@@ -1,5 +1,11 @@
 # Changelog - Nexus UI
 
+## [Trace Visibility] - 2026-07-04
+- **Feature:** Per-message trace links. `sendRequest` now reads the `X-Trace-Id` response header from `POST /run_sse` (OTel trace id, CORS-exposed by the orchestrator) and attaches it to the agent messages of that turn (`Message.traceId` in `src/types.ts`).
+- **Component:** New `TraceLink` chip (`src/components/TraceLink.tsx`) rendered on agent messages that carry a trace id: shows a short prefix of the id and deep-links (new tab) to Grafana Explore with a Tempo TraceQL query. Messages without a trace id render exactly as before, so the feature degrades gracefully until the orchestrator change lands.
+- **Config:** New env var `VITE_GRAFANA_URL` (default `http://localhost:3000`) for the Grafana base URL; the Explore link targets the `Tempo` datasource uid provisioned by nexus-dev-infra (`src/lib/trace.ts`).
+- **Tests:** Added streaming-fetch mocks asserting the chip renders with the correct href when the header is present and is absent otherwise (App, MessageList, TraceLink, trace URL builder) — suite grows from 35 to 44 tests.
+
 ## [Housekeeping] - 2026-07-03
 - **Cleanup:** Removed dead files left over from the Vite template: `src/App.css`, `src/assets/` (`hero.png`, `react.svg`, `vite.svg`), and unreferenced `public/icons.svg`.
 - **Config:** OTLP collector URL in `src/telemetry.ts` is now configurable via `VITE_OTEL_EXPORTER_URL` (default `http://localhost:4319`), mirroring `VITE_API_BASE_URL`.

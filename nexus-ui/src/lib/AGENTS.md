@@ -1,9 +1,10 @@
 # nexus-ui/src/lib
 
 Small shared utilities for nexus-ui, the React frontend of the Nexus
-multi-agent system. Currently this directory contains exactly one utility, the
-`cn()` class-name helper, which every UI primitive in `src/components/ui/` and
-several feature components use for Tailwind class composition. If you add
+multi-agent system. This directory contains the `cn()` class-name helper,
+which every UI primitive in `src/components/ui/` and several feature
+components use for Tailwind class composition, and the Grafana Tempo
+trace-link builder used by the per-message trace chips. If you add
 framework-agnostic helper functions, put them here with a colocated Vitest
 test file.
 
@@ -18,6 +19,17 @@ test file.
   caller's `className` last.
 - `utils.test.ts` — Vitest tests covering string merging, conditional
   objects, arrays, falsy filtering, and Tailwind conflict resolution.
+- `trace.ts` — Grafana Tempo deep-link helpers used by
+  `src/components/TraceLink.tsx`: `buildTraceUrl(traceId)` builds a Grafana
+  `/explore?orgId=1&left=<url-encoded JSON pane>` URL with a TraceQL query
+  that is the bare OTel trace id; `shortTraceId(traceId)` returns the
+  7-char display prefix; `getGrafanaBaseUrl()` reads `VITE_GRAFANA_URL`
+  (default `http://localhost:3000`, build-time inlined by Vite).
+  `TEMPO_DATASOURCE_UID` is `'Tempo'` and must match `uid: Tempo` in
+  `nexus-dev-infra/grafana/provisioning/datasources/datasources.yml` — a
+  cross-repo contract; change them together or not at all.
+- `trace.test.ts` — Vitest tests: default base URL, decoded left-pane
+  structure (datasource uid, traceql query, range), short-id prefix.
 
 ## Run / test
 

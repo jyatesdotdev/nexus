@@ -33,6 +33,9 @@ test. Tests run in jsdom with `../setupTests.ts` applied (jest-dom matchers,
     `../index.css`).
   - Generative UI: if `message.data?.type === 'weather_forecast'`, a
     `WeatherWidget` is rendered inside the bubble in addition to the text.
+  - Trace visibility: agent messages with a `traceId` (set by App.tsx from
+    the `X-Trace-Id` response header) render a `TraceLink` chip inside the
+    bubble; messages without one render exactly as before.
   - The trailing empty `<div ref={messagesEndRef} />` is the scroll anchor
     App.tsx scrolls to on every new message — do not remove it.
 - `MessageList.test.tsx` — tests for the above.
@@ -53,6 +56,15 @@ test. Tests run in jsdom with `../setupTests.ts` applied (jest-dom matchers,
   backend contract in `../types.ts`, so keep them in sync. The port labels are
   display-only; changing real ports happens in the backend repos.
 - `SystemStatusGrid.test.tsx` — tests for the above.
+- `TraceLink.tsx` — small chip rendered on agent messages that carry a
+  `traceId`: an anchor labeled `trace <first-7-hex-chars>` (full id in the
+  `title` tooltip) that opens the message's distributed trace in Grafana
+  Tempo in a new tab (`target="_blank"` + `rel="noopener noreferrer"`). The
+  href comes from `buildTraceUrl()` in `../lib/trace.ts` (Grafana `/explore`
+  with a URL-encoded left pane querying the `Tempo` datasource via TraceQL).
+  Props: `traceId` (32-char hex OTel trace id) and optional `className`
+  merged via `cn()`.
+- `TraceLink.test.tsx` — tests for the above (href/label, new-tab rel).
 - `WeatherWidget.tsx` — "generative UI" component: renders a structured
   `weather_forecast` payload (produced by the weather A2A agent and forwarded
   through the orchestrator as `metadata.structured_data`) as a rich card

@@ -116,6 +116,19 @@ export default function App() {
       if (!response.body) throw new Error('No response body')
 
       /**
+       * EDUCATIONAL NOTE: Trace Visibility (X-Trace-Id)
+       * WHY: The orchestrator tags each /run_sse response with the OTel trace
+       * id of the whole multi-agent workflow (CORS-exposed via
+       * Access-Control-Expose-Headers). Attaching it to the agent messages
+       * lets the UI deep-link every reply to its distributed trace in
+       * Grafana Tempo (see components/TraceLink.tsx).
+       * HOW: Response headers are available as soon as fetch resolves — no
+       * need to wait for the SSE stream. Absent header (older orchestrator)
+       * simply means no chip is rendered.
+       */
+      const traceId = response.headers?.get('X-Trace-Id') ?? undefined
+
+      /**
        * EDUCATIONAL NOTE: Web Streams API & SSE Parsing
        * HOW: response.body.getReader() allows us to process the stream chunk-by-chunk.
        * We parse each "data: " line as JSON to handle deltas and system actions.
@@ -187,18 +200,20 @@ export default function App() {
                   setMessages((prev) => {
                     const last = prev[prev.length - 1]
                     if (last && last.role === 'agent' && (last.author === author || !last.author)) {
-                      return [...prev.slice(0, -1), { 
-                        ...last, 
-                        text: accumulatedText, 
+                      return [...prev.slice(0, -1), {
+                        ...last,
+                        text: accumulatedText,
                         author: author,
-                        data: structuredData || last.data
+                        data: structuredData || last.data,
+                        traceId: traceId ?? last.traceId
                       }]
                     } else {
-                      return [...prev, { 
-                        role: 'agent', 
-                        text: accumulatedText, 
+                      return [...prev, {
+                        role: 'agent',
+                        text: accumulatedText,
                         author: author,
-                        data: structuredData
+                        data: structuredData,
+                        traceId
                       }]
                     }
                   })

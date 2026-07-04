@@ -37,6 +37,14 @@ export interface Message {
    * Optional ID for pending actions requiring user confirmation.
    */
   actionId?: string
+
+  /**
+   * Optional OpenTelemetry trace id (32-char hex) for the /run_sse request
+   * that produced this agent message, taken from the orchestrator's
+   * `X-Trace-Id` response header. When present, the UI renders a chip
+   * linking to the trace in Grafana Tempo (see src/lib/trace.ts).
+   */
+  traceId?: string
 }
 
 /**

@@ -5,8 +5,9 @@ the Nexus multi-agent system. The UI is a chat dashboard that streams responses
 from the Nexus orchestrator backend (Google ADK) over Server-Sent Events and
 shows the live health of the backend services (orchestrator, MCP server, A2A
 agent). All backend URLs derive from the env var `VITE_API_BASE_URL`
-(default `http://localhost:8080`), read via `import.meta.env` and therefore
-baked in at build time.
+(default `http://localhost:8080`); Grafana trace deep links derive from
+`VITE_GRAFANA_URL` (default `http://localhost:3000`, see `lib/trace.ts`).
+Both are read via `import.meta.env` and therefore baked in at build time.
 
 `App.tsx` owns essentially all application state and network logic; the
 components under `components/` are presentational and receive state via props.
@@ -30,7 +31,11 @@ There is no router, no global state library, and no context provider.
     orchestrator), a hardcoded mock-JWT `user_id` (intentional, for identity
     propagation demos), `session_id`, `streaming: true`. Reads
     `response.body.getReader()` chunk by chunk, splits on newlines, and parses
-    lines starting with `data: ` as JSON ADK events. Handles:
+    lines starting with `data: ` as JSON ADK events. As soon as fetch
+    resolves it also reads the `X-Trace-Id` response header (OTel trace id,
+    32-char hex, CORS-exposed by the orchestrator) and attaches it as
+    `traceId` to the agent messages of that turn; if the header is absent the
+    messages simply carry no `traceId` (graceful degradation). Handles:
     - Delta accumulation: `data.partial === true` appends the event text to a
       buffer; `partial === false` (or absent) REPLACES the buffer with the
       authoritative final text. The last agent message in `messages` is
@@ -53,11 +58,15 @@ There is no router, no global state library, and no context provider.
     ADK contract; do not rename.
 - `App.test.tsx` — Vitest + React Testing Library tests for App. Replaces
   `globalThis.fetch` with `vi.fn()` so no real network is touched; returns a
-  mocked all-online `/system-status` payload. Follow this pattern for any new
-  tests: unit tests must never hit real endpoints.
+  mocked all-online `/system-status` payload, and includes a
+  `mockSseResponse()` helper faking `response.body.getReader()` plus real
+  `Headers` for the `X-Trace-Id` trace-link tests (header present → chip with
+  correct href; absent → no chip). Follow this pattern for any new tests:
+  unit tests must never hit real endpoints.
 - `types.ts` — shared interfaces. `Message` (`role: 'user' | 'agent' |
   'system'`, `text`, optional `data` for generative-UI payloads, optional
-  `author`, optional `actionId` for HITL). `ServiceStatus` uses exact string
+  `author`, optional `actionId` for HITL, optional `traceId` — the OTel trace
+  id from the `X-Trace-Id` header that drives the TraceLink chip). `ServiceStatus` uses exact string
   literals that mirror the orchestrator's `/system-status` response:
   `orchestrator`/`mcp_server`/`a2a_agent` are `'Online' | 'Offline'`, `mcp_db`
   is `'Connected' | 'Offline'`, `a2a_api` is `'Reachable' | 'Offline'`.
@@ -110,5 +119,9 @@ npm run build   # tsc -b && vite build (strict TS: unused vars fail the build)
   `author`, `actions.transferToAgent`, `actions.requestedToolConfirmations`,
   `metadata.structured_data`) are the Google ADK event schema — treat as an
   external contract.
+- The `X-Trace-Id` response-header name is a contract with
+  nexus-orchestrator (which must also CORS-expose it), and the Tempo
+  datasource uid in `lib/trace.ts` is a contract with nexus-dev-infra's
+  Grafana provisioning — coordinate changes.
 - Keep the `EDUCATIONAL NOTE:` comment style intact; this is an educational
   codebase and those comments are a project requirement.

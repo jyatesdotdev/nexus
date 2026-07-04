@@ -16,6 +16,7 @@ This project is a React-based interactive dashboard built with TypeScript and Vi
     ```bash
     VITE_API_BASE_URL=http://localhost:8080       # Orchestrator base URL
     VITE_OTEL_EXPORTER_URL=http://localhost:4319  # OTLP collector for traces/metrics
+    VITE_GRAFANA_URL=http://localhost:3000        # Grafana base URL for per-message trace links
     ```
     Note: Vite inlines env vars at **build** time, so a production bundle bakes the values in.
 
@@ -60,6 +61,12 @@ The frontend is designed to handle asynchronous, streaming communication from mu
     - If `data.partial === true`: We append the new text to a local `accumulatedText` buffer.
     - If `data.partial === false`: We replace the buffer with the final, authoritative text provided in the event.
 *   **WHY:** Large Language Models (LLMs) emit "deltas" (small fragments of text). However, network jitter or internal retries can occasionally cause duplicate or missing chunks. The final event (where `partial` is `false`) represents the Orchestrator's verified final state for that message. Replacing the deltas with this final string ensures the UI is perfectly synced with the backend.
+
+### 🔍 Per-Message Trace Links
+**Location:** `src/App.tsx` -> `sendRequest`, `src/components/TraceLink.tsx`, `src/lib/trace.ts`
+
+*   **HOW:** The orchestrator returns the OpenTelemetry trace id of each `/run_sse` request in an `X-Trace-Id` response header (CORS-exposed). `sendRequest` reads it as soon as `fetch` resolves and attaches it to the agent messages of that turn. Agent messages carrying a `traceId` render a small chip (labeled with a short prefix of the id, like a git short hash) that deep-links to Grafana Explore with a Tempo TraceQL query — built by `buildTraceUrl()` from `${VITE_GRAFANA_URL:-http://localhost:3000}` and the `Tempo` datasource uid provisioned in `nexus-dev-infra`. The link opens in a new tab.
+*   **WHY:** Nexus exists to make agent-to-agent communication visible. Every reply is the tip of a distributed workflow (orchestrator → MCP/A2A sub-agents); one click jumps from the chat message to the full span tree in Grafana Tempo. If the header is absent (e.g., an older orchestrator), messages render exactly as before — no chip.
 
 ### 🤝 Delegation Tracking
 **Location:** `src/App.tsx` -> `sendRequest`

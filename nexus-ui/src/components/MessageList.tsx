@@ -2,6 +2,7 @@ import type { RefObject } from 'react'
 import type { Message } from '../types'
 import ReactMarkdown from 'react-markdown'
 import { WeatherWidget } from './WeatherWidget'
+import { TraceLink } from './TraceLink'
 
 /**
  * MessageList Component:
@@ -121,6 +122,17 @@ export function MessageList({ messages, messagesEndRef, setInput, handleApprove 
               */}
               {m.data?.type === 'weather_forecast' && (
                 <WeatherWidget data={m.data} />
+              )}
+
+              {/*
+                EDUCATIONAL NOTE: Trace Visibility
+                Agent messages that arrived with an X-Trace-Id response header
+                get a small chip deep-linking to the distributed trace in
+                Grafana Tempo, making the multi-agent hops behind this reply
+                inspectable. Messages without a trace id render unchanged.
+              */}
+              {m.role === 'agent' && m.traceId && (
+                <TraceLink traceId={m.traceId} />
               )}
             </div>
           </div>

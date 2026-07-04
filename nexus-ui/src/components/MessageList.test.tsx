@@ -6,6 +6,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageList } from './MessageList'
+import { buildTraceUrl } from '../lib/trace'
 import type { Message } from '../types'
 import '@testing-library/jest-dom'
 import { createRef } from 'react'
@@ -85,5 +86,46 @@ describe('MessageList', () => {
 
     expect(screen.getByText('hello from user')).toBeInTheDocument()
     expect(screen.getByText(/User123/i)).toBeInTheDocument()
+  })
+
+  it('renders a trace chip on agent messages that carry a traceId', () => {
+    /**
+     * WHY: Trace visibility is the point of Nexus — an agent message that
+     * arrived with an X-Trace-Id header must expose a deep link to its
+     * distributed trace in Grafana Tempo.
+     */
+    const traceId = 'abcdef0123456789abcdef0123456789'
+    const messages: Message[] = [
+      { role: 'agent', text: 'traced reply', author: 'nexus_orchestrator', traceId }
+    ]
+
+    render(
+      <MessageList
+        messages={messages}
+        messagesEndRef={createRef<HTMLDivElement>()}
+        setInput={vi.fn()}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: /trace abcdef0/i })
+    expect(link).toHaveAttribute('href', buildTraceUrl(traceId))
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('renders no trace chip when a message has no traceId', () => {
+    const messages: Message[] = [
+      { role: 'agent', text: 'untraced reply', author: 'nexus_orchestrator' }
+    ]
+
+    render(
+      <MessageList
+        messages={messages}
+        messagesEndRef={createRef<HTMLDivElement>()}
+        setInput={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('untraced reply')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /trace/i })).not.toBeInTheDocument()
   })
 })
