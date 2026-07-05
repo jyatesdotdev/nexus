@@ -1,4 +1,4 @@
-.PHONY: build up down doctor demo test test-e2e lint type-check chat logs evals clean verify-all new-agent
+.PHONY: build up down doctor demo test test-e2e lint type-check chat logs evals clean clean-all verify-all new-agent
 
 # EDUCATIONAL NOTE: The Makefile abstracts complex Docker Compose commands, providing 
 # a simplified interface for developers and ensuring consistent environment management.
@@ -113,9 +113,33 @@ verify-all: lint type-check evals
 	docker run --rm -v $(PWD)/..:/src bridgecrew/checkov --directory /src --check CKV_DOCKER_11,CKV_DOCKER_7 --quiet
 
 clean: down
-	@echo "🧹 Cleaning up containers and dangling images..."
-	# EDUCATIONAL NOTE: System prune is used to prevent storage bloat from unused build layers.
-	docker system prune -f
+	@echo "🧹 Removing Nexus-built images and reclaiming build cache..."
+	# EDUCATIONAL NOTE: Scoped cleanup. 'down --rmi local' removes only the images
+	# these two compose projects built (pulled infra images like postgres/grafana
+	# are kept — cheap to re-pull). The dangling-image and build-cache prunes are
+	# machine-wide but always safe: they delete unreferenced garbage, costing only
+	# rebuild time, never data. The previous 'docker system prune' here also
+	# deleted OTHER projects' stopped containers — a machine-wide side effect this
+	# target deliberately avoids. Data volumes are untouched; see 'clean-all'.
+	docker compose down --rmi local --remove-orphans
+	cd ../nexus-dev-infra && docker compose down --rmi local --remove-orphans
+	docker image prune -f
+	docker builder prune -f
+
+clean-all:
+	# EDUCATIONAL NOTE: Destructive operations should demand explicit intent — an
+	# env-var gate (FORCE=1) works for both humans and automation, unlike an
+	# interactive prompt which hangs headless callers.
+	@if [ "$(FORCE)" != "1" ]; then \
+		echo "⚠️  clean-all additionally DELETES the Nexus data volumes:"; \
+		echo "   Postgres history, Redis sessions, Grafana state — unrecoverable."; \
+		echo "   If that is what you want, re-run as: make clean-all FORCE=1"; \
+		exit 1; \
+	fi
+	$(MAKE) clean
+	@echo "🗑️  Removing Nexus data volumes..."
+	docker compose down -v
+	cd ../nexus-dev-infra && docker compose down -v
 
 new-agent:
 	# EDUCATIONAL NOTE: Turns the manual "Adding a New Service" checklist into a

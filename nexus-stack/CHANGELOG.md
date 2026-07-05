@@ -1,5 +1,8 @@
 # Changelog
 
+## [Housekeeping] - 2026-07-05
+- **Scoped `make clean` + gated `make clean-all`:** `clean` no longer runs machine-wide `docker system prune` (which deleted other projects' stopped containers). It now removes only the Nexus compose-built images plus always-safe dangling-image/build-cache garbage, never volumes. New `clean-all` deletes the Nexus data volumes too but refuses to run without `FORCE=1`.
+
 ## [Scaffolding] - 2026-07-04
 - **Generator:** Added `make new-agent NAME=<name> [PORT=<port>]` (`scripts/new-agent.sh`) — scaffolds a complete A2A sub-agent service at `../nexus-<name>` from the new `templates/a2a-service/` tree (modeled on nexus-a2a: AgentExecutor with two-phase streaming, AgentCard discovery, `/health` + telemetry via nexus-common, respx-mocked tests that pass out of the box, multi-stage non-root Dockerfile, AGENTS/README/CHANGELOG docs). PORT defaults to the first free port ≥ 8002; refuses to overwrite an existing directory.
 - **Checklist over auto-wiring:** The generator prints the remaining integration steps (compose snippet with healthcheck on `nexus-net`, orchestrator `A2A_AGENT_URLS` entry — one dynamically discovered sub-agent per agent card, named from the card — Prometheus scrape target, uv workspace member) instead of editing shared files itself.

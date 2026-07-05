@@ -148,7 +148,8 @@ make lint        # ruff (python services) + eslint (ui)
 make type-check  # mypy (python services) + tsc (ui)
 make evals       # LLM routing evals via the orchestrator CLI (needs valid GEMINI_API_KEY)
 make verify-all  # lint + type-check + evals + Semgrep standards + Checkov docker checks
-make clean       # make down + docker system prune -f (affects non-Nexus images too)
+make clean       # down + remove Nexus-built images + prune dangling/build cache (no volumes)
+make clean-all FORCE=1  # clean + DELETE Nexus data volumes (refuses without FORCE=1)
 make new-agent NAME=<name> [PORT=<port>]  # scaffold ../nexus-<name> from templates/a2a-service
 ```
 
