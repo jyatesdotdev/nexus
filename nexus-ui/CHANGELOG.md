@@ -1,4 +1,7 @@
-# Changelog - Nexus UI
+# Changelog
+
+## [Branding] - 2026-07-05
+- **Nexus favicon:** Replaced the leftover template lightning-bolt with a hand-authored Nexus mark — the letter N drawn as a network graph (hub node at the crossing, indigo palette matching the app, one emerald "healthy agent" satellite). 9.3K of blur filters down to 860 bytes. - Nexus UI
 
 ## [Trace Visibility] - 2026-07-04
 - **Feature:** Per-message trace links. `sendRequest` now reads the `X-Trace-Id` response header from `POST /run_sse` (OTel trace id, CORS-exposed by the orchestrator) and attaches it to the agent messages of that turn (`Message.traceId` in `src/types.ts`).
