@@ -45,7 +45,7 @@ the consuming services' test suites (`nexus-orchestrator/tests/`, `nexus-mcp/tes
 a reasonable smoke check is:
 
 ```bash
-cd /Users/jyates/Repositories/nexus
+cd <workspace-root>
 uv run --project nexus-orchestrator pytest nexus-orchestrator/tests/
 cd nexus-common && uv run mypy . && uv run ruff check .
 ```

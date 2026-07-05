@@ -26,7 +26,7 @@ IMPORTANT side-effect: importing `orchestrator.app` builds the root agent and th
 
 ## How to run/test
 
-From the repo root (`/Users/jyates/Repositories/nexus/nexus-orchestrator`):
+From the repo root (`<workspace-root>/nexus-orchestrator`):
 
 ```bash
 uv run python main.py serve            # HTTP server on :8080

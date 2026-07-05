@@ -66,7 +66,7 @@ Recommended path (matches `make test` in `../nexus-stack`), from `../nexus-stack
 full stack up (`make up`):
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-stack
+cd <workspace-root>/nexus-stack
 docker compose run --rm -e PYTHONPATH=/app -e ORCHESTRATOR_URL=http://orchestrator:8080 orchestrator \
   pytest /e2e_tests/test_a2a_integration.py /e2e_tests/test_persistence_integration.py \
          /e2e_tests/test_routing_integration.py -v
@@ -76,7 +76,7 @@ From the host (requires `pip install pytest pytest-asyncio httpx redis asyncpg`
 and the containers running):
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-integration
+cd <workspace-root>/nexus-integration
 REDIS_URL=redis://localhost:6379 \
 DATABASE_URL=postgresql://nexus:password@localhost:5432/nexus_dev \
 pytest -v

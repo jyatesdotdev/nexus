@@ -59,7 +59,7 @@ Grafana is pre-provisioned with both datasources and two dashboards.
 
 ```bash
 docker network create nexus-net   # only if it does not exist yet
-cd /Users/jyates/Repositories/nexus/nexus-dev-infra
+cd <workspace-root>/nexus-dev-infra
 docker compose up -d
 docker compose ps                 # all services should become healthy
 docker compose down               # stop (postgres/prometheus data persist in volumes)

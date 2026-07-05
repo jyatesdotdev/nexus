@@ -16,7 +16,7 @@ SQLAlchemy is not listed in `requirements.txt`; it comes in transitively via `go
 ## How to test
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-orchestrator
+cd <workspace-root>/nexus-orchestrator
 uv run pytest tests/test_redis_services.py tests/test_postgres_services.py tests/test_database_session_service.py
 ```
 

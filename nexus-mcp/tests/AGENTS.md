@@ -42,7 +42,7 @@ Diana Prince).
 
 ## How to run
 
-From the repo root (`/Users/jyates/Repositories/nexus/nexus-mcp`):
+From the repo root (`<workspace-root>/nexus-mcp`):
 
 ```bash
 uv run pytest            # all tests

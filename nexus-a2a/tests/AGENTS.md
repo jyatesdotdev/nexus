@@ -22,7 +22,7 @@ All 8 tests pass against the current `server.py`.
 Tests import `server` as a top-level module (pyproject's pytest config sets `pythonpath = ["."]`, so any invocation directory works):
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-a2a
+cd <workspace-root>/nexus-a2a
 uv run pytest tests/ -v
 ```
 

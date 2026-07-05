@@ -42,7 +42,7 @@ make logs        # tail logs
 Local, without Docker (uses the uv workspace at the repo root — one `uv sync` there serves all four Python projects):
 
 ```bash
-cd /Users/jyates/Repositories/nexus && uv sync   # once; creates the shared root .venv
+cd <workspace-root> && uv sync   # once; creates the shared root .venv
 cd nexus-a2a
 uv run python server.py           # serves http://localhost:8001
 curl http://localhost:8001/.well-known/agent-card.json   # discovery card

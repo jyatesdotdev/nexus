@@ -26,7 +26,7 @@ Sibling repos in the workspace: nexus-a2a (weather A2A server), nexus-mcp (HR di
 Environment: create a `.env` file (or export vars) with at least `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). The CLI refuses to start without one. Optional: `AGENT_MODEL` (default `gemini-2.5-flash`; `ollama/llama3` for local), `PERSISTENCE_BACKEND` (`in_memory` default, `redis`, or `postgres`), `MCP_SERVER_URLS`, `A2A_AGENT_URLS` (comma-separated A2A endpoints — base or agent-card URLs — discovered via each service's agent card at startup), `REVIEWER_ENFORCEMENT` (`true` default; toggles the programmatic reviewer-critic pipeline on both the CLI and HTTP paths).
 
 ```bash
-cd /Users/jyates/Repositories/nexus && uv sync      # once; creates the shared workspace .venv at the repo root
+cd <workspace-root> && uv sync      # once; creates the shared workspace .venv at the repo root
 cd nexus-orchestrator
 uv run python main.py chat "What is the weather in Paris?"   # one-shot prompt
 uv run python main.py chat                          # interactive chat

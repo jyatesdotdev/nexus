@@ -24,7 +24,7 @@ Loading gotcha: `load_agents_from_module` walks and imports/reloads every module
 ## How to test
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-orchestrator
+cd <workspace-root>/nexus-orchestrator
 uv run pytest tests/test_initialization.py tests/test_orchestrator.py
 ```
 

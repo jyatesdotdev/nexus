@@ -13,7 +13,7 @@ Registration wiring: `orchestrator/app.py` does `from . import adapters`, and `_
 ## How to test
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-orchestrator
+cd <workspace-root>/nexus-orchestrator
 uv run pytest tests/test_ollama_adapter.py
 ```
 

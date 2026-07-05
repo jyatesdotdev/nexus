@@ -17,7 +17,7 @@ This tiny package implements the registry pattern that decouples sub-agent defin
 There is no dedicated test file for the registry; it is exercised indirectly:
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-orchestrator
+cd <workspace-root>/nexus-orchestrator
 uv run pytest tests/test_initialization.py tests/test_orchestrator.py
 ```
 

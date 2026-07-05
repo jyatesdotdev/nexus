@@ -24,7 +24,7 @@ Import-time gotcha: `orchestrator/app.py` builds the root agent and persistence 
 ## How to run
 
 ```bash
-cd /Users/jyates/Repositories/nexus/nexus-orchestrator
+cd <workspace-root>/nexus-orchestrator
 uv run pytest tests/                       # whole suite
 uv run pytest tests/test_tools.py -v       # one file
 uv run pytest tests/ -k "redis"            # by keyword

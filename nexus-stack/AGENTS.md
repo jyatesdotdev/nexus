@@ -132,7 +132,7 @@ This directory is part of the single workspace-root git repository. Subdirectori
 
 ## How to run
 
-All commands from this directory (`/Users/jyates/Repositories/nexus/nexus-stack`):
+All commands from this directory (`<workspace-root>/nexus-stack`):
 
 ```bash
 make doctor      # preflight: docker, .env/GEMINI_API_KEY, nexus-net, node/npm, uv
