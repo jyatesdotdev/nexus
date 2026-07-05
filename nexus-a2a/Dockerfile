@@ -1,3 +1,13 @@
+# EDUCATIONAL NOTE: Why the Build Context Is the Workspace Root, Not This Folder
+# `COPY nexus-common /nexus-common` only works because docker-compose builds this
+# image with the PARENT directory as context (context: .., dockerfile:
+# nexus-a2a/Dockerfile). A sibling package can never be COPY'd from a context
+# rooted inside nexus-a2a/ — Docker forbids reaching above the context. The
+# two-stage split then keeps the compiler toolchain out of the shipped image:
+# the builder pre-compiles everything (including nexus-common) into wheels, and
+# the final stage installs only those wheels and runs as a non-root user, so a
+# compromised container has neither build tools nor root.
+
 # Builder Stage
 FROM python:3.14-slim AS builder
 

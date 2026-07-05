@@ -6,6 +6,16 @@ import { cn } from '../../lib/utils'
  * WHY: Centralizes button logic, including loading states and hover effects.
  * HOW: Extends native button props and adds a `variant` and `isLoading` prop.
  */
+// EDUCATIONAL NOTE: Extend the Platform, Don't Re-Invent It
+// Extending React.ButtonHTMLAttributes<HTMLButtonElement> means this component
+// accepts every native button prop (type, onClick, aria-*, form...) without
+// declaring any of them — `{...props}` forwards the remainder after our custom
+// props are destructured out. Because our additions are typed alongside the
+// native set, misuse is caught at compile time. Note the line
+// `disabled={isLoading || disabled}`: loading IMPLIES disabled here, which is
+// a policy decision — a button that shows a spinner but still accepts clicks
+// invites double-submits, so the primitive forbids that state by construction
+// rather than trusting every call site to remember.
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'ghost'
   isLoading?: boolean

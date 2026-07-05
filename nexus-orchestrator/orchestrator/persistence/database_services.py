@@ -16,6 +16,17 @@ logger = logging.getLogger(__name__)
 class Base(AsyncAttrs, DeclarativeBase):
     pass
 
+# EDUCATIONAL NOTE: One Row Per Session, Events as a JSON Blob
+# ADK's BaseSessionService is the seam that makes backends swappable, and this
+# implementation makes a deliberately teachable trade-off: the entire event
+# list lives in a single JSON column, re-serialized on every append_event.
+# That is O(session length) per turn and would not survive production traffic
+# (a real system would use an events table with one row per event), but it
+# keeps the mapping Session <-> row one-to-one and the code readable. Two
+# subtler choices matter more than they look: expire_on_commit=False lets us
+# hand ORM data back after the async session closes without lazy-load errors,
+# and append_event drops `partial` streaming deltas so only authoritative
+# events are ever persisted — replaying a session must not replay half-tokens.
 class DBSession(Base):
     __tablename__ = "sessions"
     id: Mapped[str] = mapped_column(String(255), primary_key=True)

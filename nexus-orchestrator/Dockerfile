@@ -60,6 +60,16 @@ USER appuser
 # Standard port for the orchestrator
 EXPOSE 8080
 
+# EDUCATIONAL NOTE: Gunicorn Manages Processes, Uvicorn Speaks ASGI
+# Neither tool alone is the production story: uvicorn is a single-process ASGI
+# server, gunicorn is a battle-tested process supervisor that only speaks WSGI.
+# Pairing gunicorn with the UvicornWorker class gets supervised, restartable
+# workers that still run FastAPI's async event loop. The entry point is
+# `orchestrator.asgi:app` — not the CLI in main.py — so each worker constructs
+# the agent tree exactly once at import. The `rm -rf` of the Prometheus
+# multiproc dir matters too: that directory is how metrics from multiple worker
+# processes get aggregated, and stale files from a previous container run would
+# double-count metrics after a restart.
 # Use Gunicorn with Uvicorn workers for production-grade concurrency
 # --bind 0.0.0.0:8080 allows external traffic
 # --workers 1 (Adjust based on CPU cores in production)

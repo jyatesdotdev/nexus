@@ -13,6 +13,18 @@ from typing_extensions import override
 
 logger = logging.getLogger(__name__)
 
+# EDUCATIONAL NOTE: Whole-Session Blobs and a Manual Index
+# Redis is a key-value store — it cannot answer "which sessions does this user
+# have?" without help, so we maintain a secondary SET (sessions_list:*) as a
+# hand-rolled index and must keep it in sync on create/delete ourselves. The
+# session itself is stored as ONE Pydantic-JSON blob rewritten on every
+# append_event: each write is O(session length), but a single SET is atomic,
+# so readers never observe a half-updated session (appending to a separate
+# Redis LIST would be cheaper per event but splits one logical object across
+# keys with no transaction tying them together). The memory service below
+# shows the low-tech end of the retrieval spectrum — naive keyword matching
+# over a full LRANGE scan — as a contrast to the pgvector backend's semantic
+# search.
 class RedisSessionService(BaseSessionService):
     def __init__(self, redis_client: Redis):
         self._redis = redis_client

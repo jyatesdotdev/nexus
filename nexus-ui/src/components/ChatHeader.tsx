@@ -2,6 +2,14 @@
  * ChatHeader Component:
  * Displays the current status of the connection and the session identifier.
  */
+// EDUCATIONAL NOTE: This Component Displays Status but Never Determines It
+// Connection state is owned by App.tsx (which polls the backend) and flows
+// down as a prop. If the header probed /health itself, three components could
+// disagree about whether Nexus is "Online" at the same instant — the classic
+// multiple-sources-of-truth bug. Typing status as the union 'Online'|'Offline'
+// instead of string completes the contract: the compiler rejects a typo like
+// 'online' at the call site, so the status-dot ternary below can safely treat
+// "not Online" as Offline without a defensive else-if chain.
 interface ChatHeaderProps {
   /**
    * Status can only be 'Online' or 'Offline'. 

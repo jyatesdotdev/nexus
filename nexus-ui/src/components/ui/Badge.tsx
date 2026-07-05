@@ -6,6 +6,14 @@ import { cn } from '../../lib/utils'
  * WHY: Standardizes status labels (Online, Offline, Connected, etc).
  * HOW: Uses a 'variant' pattern to switch between success (emerald) and error (rose) styles.
  */
+// EDUCATIONAL NOTE: Variants as a Lookup Table, Not an If-Chain
+// The `variants` object maps each allowed name to its full class string, and
+// the union type on `variant` makes the two structures police each other:
+// add a variant to the type without adding styles (or vice versa) and
+// TypeScript errors at `variants[variant]`. Argument order inside cn() is the
+// other load-bearing detail — the caller's `className` comes LAST so that
+// tailwind-merge resolves any conflict in the caller's favor, which is what
+// makes these primitives overridable without an escape-hatch prop.
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'success' | 'error' | 'neutral'
 }

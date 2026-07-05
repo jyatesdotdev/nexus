@@ -9,6 +9,16 @@ interface SystemStatusProps {
   status: ServiceStatus
 }
 
+// EDUCATIONAL NOTE: Health Is Transitive, and Every Service Speaks Its Own Dialect
+// Two distributed-systems lessons are encoded in this grid. First, the
+// isOnline() helper exists because each backend reports health in its own
+// vocabulary ('Online', 'Connected', 'Reachable') — the UI normalizes at the
+// edge rather than forcing three services to share an enum they don't own.
+// Second, the subStatus rows surface DEPENDENCY health (MCP's database, the
+// A2A agent's weather API) separately from service health: a green service
+// badge over a red dependency row is a real and important state — the process
+// is up but cannot do its job — and flattening both into one light would hide
+// exactly the failures that are hardest to debug.
 export function SystemStatusGrid({ status }: SystemStatusProps) {
   /**
    * Helper Function:

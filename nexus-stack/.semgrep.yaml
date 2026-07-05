@@ -1,19 +1,26 @@
+# EDUCATIONAL NOTE: This rule intentionally matches the FIRST CHARACTER of any
+# file whose full text (DOTALL lookahead) lacks the marker. An earlier version
+# matched the zero-width '\A' and filtered with pattern-not-regex — but
+# zero-width-match handling differs across semgrep versions (older releases
+# dropped empty matches entirely, so the rule silently checked nothing), and
+# the not-regex only suppressed matches OVERLAPPING position 0. Anchoring the
+# lookahead over the whole file and consuming one real character is stable
+# across engines.
 rules:
   - id: nexus-missing-educational-note
     patterns:
-      - pattern-regex: '\A' # Match start of file
-      - pattern-not-regex: ".*EDUCATIONAL NOTE:.*"
+      - pattern-regex: '(?s)\A(?!.*EDUCATIONAL NOTE:).'
     message: "Nexus Standard Violation: Every architectural file must contain an '# EDUCATIONAL NOTE:' explaining the 'Why' behind the implementation."
     languages: [python, ts, js, dockerfile, yaml]
     severity: ERROR
     paths:
       include:
-        - "nexus-orchestrator/**"
-        - "nexus-mcp/**"
-        - "nexus-a2a/**"
-        - "nexus-ui/**"
-        - "nexus-integration/**"
-        - "nexus-stack/**"
+        - "**/nexus-orchestrator/**"
+        - "**/nexus-mcp/**"
+        - "**/nexus-a2a/**"
+        - "**/nexus-ui/**"
+        - "**/nexus-integration/**"
+        - "**/nexus-stack/**"
       exclude:
         - "**/node_modules/**"
         - "**/venv/**"
@@ -22,6 +29,11 @@ rules:
         - "**/build/**"
         - "**/tests/**"
         - "**/e2e_tests/**"
+        - "**/e2e/**"
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/*.spec.ts"
+        - "**/setupTests.ts"
         - "**/.git/**"
         - "CHANGELOG.md"
         - "TODO.md"

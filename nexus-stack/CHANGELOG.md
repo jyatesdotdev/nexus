@@ -1,5 +1,8 @@
 # Changelog
 
+## [Standards] - 2026-07-05
+- **Semgrep educational-note rule actually enforces now:** the old zero-width `\A` + `pattern-not-regex` construction silently matched nothing on older engines and mis-fired on newer ones (only honoring notes on line 1). Rewritten as a version-stable whole-file DOTALL lookahead; co-located UI test files excluded to match the python `tests/` exemption; include patterns unanchored per Semgrepignore v2. The working rule surfaced 19 files that had never received a note — all now documented.
+
 ## [Housekeeping] - 2026-07-05
 - **Scoped `make clean` + gated `make clean-all`:** `clean` no longer runs machine-wide `docker system prune` (which deleted other projects' stopped containers). It now removes only the Nexus compose-built images plus always-safe dangling-image/build-cache garbage, never volumes. New `clean-all` deletes the Nexus data volumes too but refuses to run without `FORCE=1`.
 

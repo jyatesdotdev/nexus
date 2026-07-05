@@ -25,6 +25,17 @@ interface MessageInputProps {
  * HOW: This is a "Functional Component". It receives 'props' as an object,
  * and we use "destructuring" { input, setInput... } to pull out the individual values.
  */
+// EDUCATIONAL NOTE: The Disabled Conditions Are Deliberately Asymmetric
+// Look closely: the Input disables on `isLoading || isOffline`, but the Button
+// disables on `!input.trim() || isOffline` and receives isLoading separately.
+// The button must not add isLoading to its own `disabled` expression here
+// because the Button primitive already folds isLoading into disabled
+// internally — while showing a spinner. Splitting the concerns this way gives
+// each control the right behavior for each state: empty input blocks the
+// button but not typing; an in-flight request (SSE stream) freezes both to
+// prevent double-submits; offline kills everything. All of that state lives in
+// App.tsx — this component is intentionally stateless so the send logic and
+// the stream handling stay in one place.
 export function MessageInput({ input, setInput, isLoading, isOffline, handleSend }: MessageInputProps) {
   return (
     /**

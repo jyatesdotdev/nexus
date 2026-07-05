@@ -12,6 +12,15 @@ from orchestrator.config import (
 )
 from orchestrator.app import root_agent, session_service, memory_service, get_runner, run_chat_loop
 
+# EDUCATIONAL NOTE: One Construction Path, Three Front Doors
+# chat, serve, and evals all import the SAME root_agent/session_service/
+# get_runner from orchestrator.app rather than building their own. That is
+# deliberate: the terminal chat loop, the HTTP server, and the eval harness
+# exercise an identical runner pipeline (Runner -> LoopDetection -> Reviewer),
+# so a behavior verified in `chat` cannot silently differ under `serve`. The
+# Click *group* callback is also a teaching point — it runs before ANY
+# subcommand, making validate_config() a single choke point for failing fast
+# on missing environment instead of repeating the check per command.
 @click.group()
 def cli() -> None:
     """Multi-Agent Orchestrator CLI."""

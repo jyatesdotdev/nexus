@@ -6,6 +6,15 @@ import { cn } from '../../lib/utils'
  * WHY: Standardizes input styling across the app.
  * HOW: Wraps a native input, providing a default neutral theme that matches the app's aesthetic.
  */
+// EDUCATIONAL NOTE: A Zero-API Wrapper Is Still a Contract
+// InputProps is a bare type alias for the native input props — this component
+// adds no behavior at all, only a styling baseline. That is the point: by
+// owning ONLY appearance, it can never drift out of sync with how <input>
+// works (controlled value/onChange, disabled, focus) because it forwards all
+// of it untouched via {...props}. Compare with Button, which does add behavior
+// (isLoading) and therefore has to manage the interaction between its prop
+// and the native `disabled`. Start wrappers at this altitude; earn complexity
+// only when a real cross-cutting behavior demands it.
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 export function Input({ className, ...props }: InputProps) {
