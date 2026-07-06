@@ -151,7 +151,7 @@ The scaffold is a complete A2A service — agent card, two-phase streaming execu
 
 ## Lessons this lab teaches (the hard way)
 
-These all actually happened here, are fixed, and are preserved in code comments and tests because they generalize:
+These all actually happened here, are fixed, and are preserved in code comments and tests because they generalize (the full story, from monolith to publication, is told in [docs/JOURNEY.md](docs/JOURNEY.md)):
 
 - **Delegated input contains someone else's conversation.** ADK splices prior context into A2A requests. The weather agent once extracted "the engineering department" as a city — and wttr.in cheerfully geocoded it. Sub-agents must validate inputs and refuse to guess; ours now does, and the scaffold template inherits the defense.
 - **Streaming + review is an ordering problem.** Clients treat the last non-partial event as *the* answer, so a naive reviewer that appends its verdict replaces the answer with the critique. Review must run out-of-band, in an isolated session, and write back only clean results.

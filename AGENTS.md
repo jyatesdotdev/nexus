@@ -28,6 +28,7 @@ The orchestrator is the single entry point for user requests. It routes each req
 | `nexus-integration/` | Live-container integration tests (A2A discovery, Redis/Postgres persistence), run inside the orchestrator container via nexus-stack's `make test`. |
 | `.kiro/steering/` | Workspace-wide steering docs: `product.md` (architecture and domain concepts), `structure.md` (layout and per-service conventions), `tech.md` (stack, quality rules, ports, env vars). Read these before cross-service changes. |
 | `.github/` | CI workflow (`workflows/ci.yml`): path-filtered per-service lint/type/unit jobs plus Semgrep and static Checkov. Evals and stack-dependent suites are deliberately excluded (comments in the yaml explain why). |
+| `docs/` | Long-form prose: `JOURNEY.md`, the narrative history of the project (append new chapters; don't rewrite old ones). |
 
 Each of these directories has its own AGENTS.md with per-file detail; nested directories (e.g. `nexus-orchestrator/orchestrator/persistence/`, `nexus-ui/src/components/`) have their own as well.
 
