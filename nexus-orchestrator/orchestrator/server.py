@@ -51,7 +51,7 @@ class GovernedAdkWebServer(AdkWebServer):
     EDUCATIONAL NOTE: Reviewer Enforcement on the HTTP Path
     [Why] `app.get_runner()` only governs the CLI/evals path; AdkWebServer
     builds its own Runner per app inside `get_runner_async`, so UI traffic
-    hitting POST /run_sse used to bypass the reviewer entirely. ADK (1.28.0)
+    hitting POST /run_sse used to bypass the reviewer entirely. ADK (2.3.0)
     offers no runner-factory or injection hook on AdkWebServer, so the
     narrowest supported seam is overriding the protected `_create_runner`
     method — the single place where `get_runner_async` constructs a Runner

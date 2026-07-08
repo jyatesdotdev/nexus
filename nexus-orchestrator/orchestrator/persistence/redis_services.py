@@ -32,12 +32,6 @@ class RedisSessionService(BaseSessionService):
     def _get_session_key(self, app_name: str, user_id: str, session_id: str) -> str:
         return f"session:{app_name}:{user_id}:{session_id}"
 
-    def _get_app_state_key(self, app_name: str) -> str:
-        return f"state:app:{app_name}"
-
-    def _get_user_state_key(self, app_name: str, user_id: str) -> str:
-        return f"state:user:{app_name}:{user_id}"
-
     def _get_sessions_list_key(self, app_name: str, user_id: str) -> str:
         return f"sessions_list:{app_name}:{user_id}"
 

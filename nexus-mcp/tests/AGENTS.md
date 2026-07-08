@@ -18,7 +18,7 @@ Diana Prince).
 
 ## Files at this level
 
-- `test_server.py` — the whole suite (11 tests). Structure and gotchas:
+- `test_server.py` — the whole suite (12 tests). Structure and gotchas:
   - The first ~25 lines create a `tempfile.mkstemp(suffix=".db")` database and
     set `os.environ["DATABASE_URL"]` before the `from database import ...` /
     `from server import ...` lines. This ordering is load-bearing; the imports

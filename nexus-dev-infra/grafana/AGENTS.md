@@ -26,8 +26,9 @@ once the parent compose stack is up.
 - `dashboards/nexus-overview.json` — "Nexus System Overview" dashboard: request rate and
   average response latency panels. These panels query the Prometheus metrics
   `nexus_http_requests_total` and `nexus_http_request_duration_seconds`, which are emitted
-  by the shared `nexus-common` library in every Python service. If those metric names or
-  their labels (`method`, `endpoint`, `status`, `service`) change in
+  by the shared `nexus-common` library in every Python service. Both metrics carry the
+  labels `method`, `endpoint`, `service`; only `nexus_http_requests_total` additionally
+  carries `status`. If those metric names or labels change in
   `nexus-common/nexus_common/telemetry.py`, these panels go blank.
 
 - `dashboards/tempo-health.json` — "Tempo Tracing Health" dashboard: Tempo ingestion rate,

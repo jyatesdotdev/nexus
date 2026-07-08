@@ -90,8 +90,7 @@ jobs:
         with:
           # All three services run Python 3.14: every local venv is 3.14.4 and every
           # Dockerfile builds FROM python:3.14-slim, so one uniform matrix version is
-          # correct. (nexus-orchestrator's ruff target-version py310 is only a lint
-          # compatibility floor, not its runtime.) Quoted so YAML doesn't read a float.
+          # correct. Quoted so YAML doesn't read a float.
           python-version: '3.14'
           cache: pip
           cache-dependency-path: ${{ matrix.service }}/requirements*.txt
@@ -107,9 +106,10 @@ jobs:
       - name: Ruff
         run: ruff check .
       - name: Mypy
-        # Only nexus-mcp passes `mypy --strict` cleanly today (verified 2026-07-04:
-        # orchestrator has 40 errors, a2a has 15). Gate only where it is green rather
-        # than adding a permanently red check; widen this when the others are fixed.
+        # nexus-mcp passes `mypy --strict` cleanly today (nexus-common does too, checked
+        # via its own target); orchestrator and a2a still carry pre-existing type errors.
+        # Gate mypy only where it's green rather than adding a permanently red check;
+        # widen this when the others are fixed.
         if: matrix.service == 'nexus-mcp'
         run: mypy .
       - name: Pytest
@@ -129,18 +129,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          # nexus-common declares requires-python >=3.10; lint with the same 3.14 the
+          # nexus-common declares requires-python >=3.14; lint with the same 3.14 the
           # consuming services run.
           python-version: '3.14'
       - name: Install ruff
         run: pip install ruff
       - name: Ruff
-        # nexus-common has no [tool.ruff] section, so ruff's defaults apply (they match
-        # the workspace's line-length 88 convention).
+        # nexus-common's [tool.ruff] pins target-version py314 and line-length 88
+        # (the workspace convention).
         run: ruff check .
-      # Mypy is intentionally NOT run here: nexus-common has no [tool.mypy] config and
-      # ships no py.typed marker (consumers treat it as untyped — see nexus-mcp's
-      # pyproject override), so a strict run would only produce noise.
+      # Mypy is intentionally NOT run in this lint-only job. nexus-common IS strictly
+      # typed ([tool.mypy] strict = true) and ships a nexus_common/py.typed marker, so
+      # its public types are validated when the consuming services run strict mypy (e.g.
+      # the nexus-mcp job) and via `make type-check` at the workspace root.
       # Pytest is intentionally NOT run here: nexus-common contains no tests as of
       # 2026-07-04. Add a pytest step when a tests/ directory appears.
 

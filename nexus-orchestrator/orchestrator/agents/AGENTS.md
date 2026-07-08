@@ -2,7 +2,7 @@
 
 This package defines every sub-agent that the Nexus root orchestrator can delegate to. Agents are not instantiated here directly; each is wrapped in a factory function registered with `AgentRegistry` (see `../registry/agent_registry.py`). At startup, `orchestrator/app.py` calls `AgentRegistry.load_agents_from_module("orchestrator.agents.core_agents")` and then `register_dynamic_agents()`, collects all factories, instantiates them, and passes the resulting agents as `sub_agents` of the root agent. The root agent's routing prompt is auto-generated from each agent's `description` field, so descriptions are load-bearing: they are what the LLM uses to pick an agent.
 
-Loading gotcha: `load_agents_from_module` walks and imports/reloads every module in this package, so any new `.py` file added here will be auto-imported at startup — module-level side effects run whether you want them or not.
+Loading gotcha: the startup call passes the *module* `orchestrator.agents.core_agents`, so only that module is imported (or reloaded), running its `@register` decorators. `load_agents_from_module` only walks sibling modules when handed a *package* (something with a `__path__`) — this call is not, so a bare new `.py` file dropped in this directory is NOT auto-discovered and its factory silently never registers. `dynamic_agents.py` is loaded by a separate explicit import in `app.py`. To add a new agent, register its factory in `core_agents.py` (or add an explicit import of your new module in `app.py`). See `../registry/AGENTS.md` for the exact loader behavior.
 
 ## Files
 

@@ -22,7 +22,9 @@ is enforced with Ruff (config in pyproject.toml); Python target is 3.14.
   `bootstrap_starlette_service()` from nexus_common (registers `/health` and
   telemetry on the Starlette app returned by `mcp.sse_app()`). Exposes:
   - Tool `search_directory(department=None, name=None)` — filters the `users`
-    table; name matching is partial (`contains`).
+    table; name matching is case-insensitive partial (`icontains`) and
+    department matching is case-insensitive (compared lowercased). LLM-supplied
+    args vary in casing, so exact matching would make results nondeterministic.
   - Tool `delete_user(email, ctx)` — deletes users by email. Admin-gated: the
     caller's user id is parsed from the `Authorization: Bearer` header via
     `nexus_common.IdentityContext`, and only the hard-coded id `mock_user_123`

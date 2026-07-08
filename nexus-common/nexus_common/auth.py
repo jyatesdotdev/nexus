@@ -15,13 +15,10 @@ class IdentityContext:
         
         if auth_header and auth_header.startswith("Bearer "):
             self.raw_token = auth_header.split(" ")[1]
-            # MOCK JWT PARSING: In this lab, we just split the string to get the 'mock_user_123' part
+            # MOCK JWT PARSING: In this lab, we just split the string to get the 'mock_user_123' part.
+            # The guard guarantees a '.' is present, so split(".")[1] always exists (no IndexError).
             if "." in self.raw_token:
-                try:
-                    payload = self.raw_token.split(".")[1]
-                    self.user_id = payload
-                except Exception:
-                    self.user_id = "invalid_token"
+                self.user_id = self.raw_token.split(".")[1]
             else:
                 self.user_id = self.raw_token
 

@@ -18,7 +18,6 @@ dependencies = [
     "opentelemetry-sdk",
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-exporter-otlp",
-    "opentelemetry-exporter-prometheus",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-starlette",
     "prometheus_client",

@@ -1,5 +1,5 @@
 # .github
 
 GitHub configuration for the Nexus monorepo. Only `workflows/` exists — see
-`workflows/AGENTS.md`. Note: as of 2026-07-05 this repository has no GitHub remote, so
-everything under here is dormant until the repo is pushed.
+`workflows/AGENTS.md`. The repository is published on GitHub (remote `origin`), so the
+workflows here run in CI on push to `main` and on pull requests.

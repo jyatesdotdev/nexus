@@ -24,7 +24,8 @@ because the compose build contexts point at the parent directory (`..`).
     `http://localhost:8000/sse` (the SSE endpoint, not `/health`).
   - `a2a-agent` (host port 8001): A2A weather agent. Healthcheck probes
     `/.well-known/agent-card.json`.
-  - `orchestrator` (host port 8080): root agent. `depends_on` both sub-agents with
+  - `orchestrator` (host port 8080, overridable via `ORCHESTRATOR_HOST_PORT` in `.env`):
+    root agent. `depends_on` both sub-agents with
     `condition: service_healthy`. Its environment wires the whole system together:
     `MCP_SERVER_URL=http://mcp-server:8000/sse`,
     `A2A_AGENT_URL=http://a2a-agent:8001/.well-known/agent-card.json`,
@@ -36,7 +37,8 @@ because the compose build contexts point at the parent directory (`..`).
     The hostnames `redis`, `postgres`, `prometheus`, `otel-collector` are services defined
     in `../nexus-dev-infra/docker-compose.yml` — the infra stack must be up or the
     orchestrator's persistence and telemetry fail.
-  - `frontend` (host port 5173 -> container 80): nginx serving the pre-built UI.
+  - `frontend` (host port 5173 -> container 80; host port overridable via
+    `FRONTEND_HOST_PORT` in `.env`): nginx serving the pre-built UI.
   All Python services mount their source repo into the container (live reload without
   rebuild) and mount `../nexus-common` at `/nexus-common`; the orchestrator additionally
   mounts `../nexus-integration` at `/e2e_tests`. All set
@@ -53,9 +55,11 @@ because the compose build contexts point at the parent directory (`..`).
   integration step points pytest at the mounted `/e2e_tests` directory (default
   `test_*.py` discovery), so new files in `../nexus-integration` are picked up without
   Makefile edits. `doctor` and `demo` delegate to `scripts/doctor.sh` and
-  `scripts/demo.sh`. `clean` runs
-  `docker system prune -f` (removes ALL dangling images/containers machine-wide, not just
-  Nexus ones). `verify-all` runs lint + type-check + evals first, then Semgrep and Checkov
+  `scripts/demo.sh`. `clean` runs `docker compose down --rmi local` for both compose
+  projects (removing only the Nexus-built images) plus `docker image prune -f` and
+  `docker builder prune -f` — those prunes are machine-wide but safe (unreferenced dangling
+  images and build cache only, never volumes or other projects' containers); `clean-all
+  FORCE=1` additionally deletes the Nexus data volumes. `verify-all` runs lint + type-check + evals first, then Semgrep and Checkov
   in Docker against the whole parent directory.
 - `scripts/doctor.sh` — preflight checks behind `make doctor`: Docker CLI + daemon, `.env`
   exists with a non-placeholder `GEMINI_API_KEY` (presence tested with `grep -q` only —
@@ -155,7 +159,10 @@ make new-agent NAME=<name> [PORT=<port>]  # scaffold ../nexus-<name> from templa
 
 After `make up`: UI at http://localhost:5173, orchestrator API at http://localhost:8080
 (`/health`, `/system-status`), MCP at http://localhost:8000, A2A at http://localhost:8001,
-Grafana at http://localhost:3000 (admin/admin).
+Grafana at http://localhost:3000 (admin/admin). The orchestrator and UI **host** ports
+default to 8080/5173 but are overridable via `ORCHESTRATOR_HOST_PORT` / `FRONTEND_HOST_PORT`
+in `.env` (see `.env.example`) — `make demo` picks the override up automatically, and a
+squatted host port makes the VM port-forward fail silently while healthchecks stay green.
 
 Adding a new A2A sub-agent to the stack: run `make new-agent NAME=<name>` and follow the
 printed checklist — it scaffolds a complete service (protocol code, `/health` via
@@ -176,5 +183,7 @@ entry with healthcheck on `nexus-net`, Prometheus scrape target, educational not
   `../nexus-dev-infra/docker-compose.yml`.
 - Do not "fix" the mcp-server healthcheck to `/health` without verifying the MCP server
   exposes it on that transport — the current check intentionally uses `/sse`.
-- `make clean` prunes Docker system-wide; do not run it casually on a machine with other
-  Docker workloads.
+- `make clean` removes only Nexus compose-built images; its `docker image prune` /
+  `docker builder prune` are machine-wide but always safe — they delete only unreferenced
+  dangling images and build cache, never volumes or other projects' containers.
+  `make clean-all FORCE=1` additionally deletes the Nexus data volumes (Postgres/Redis/Grafana).

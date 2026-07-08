@@ -8,9 +8,11 @@ happens in App.tsx as well. Styling is Tailwind CSS v4 utility classes; shared
 primitives (Button, Card, Input, Badge) come from the `ui/` subdirectory and
 are imported via the barrel `./ui`.
 
-Each component has a colocated `*.test.tsx` Vitest + React Testing Library
-test. Tests run in jsdom with `../setupTests.ts` applied (jest-dom matchers,
-`scrollIntoView` mocked) and must not perform real network calls.
+Each component except `WeatherWidget` has a colocated `*.test.tsx` Vitest +
+React Testing Library test (WeatherWidget is exercised indirectly through
+MessageList's tests). Tests run in jsdom with `../setupTests.ts` applied
+(jest-dom matchers, `scrollIntoView` mocked) and must not perform real
+network calls.
 
 ## Files at this level
 
@@ -18,6 +20,7 @@ test. Tests run in jsdom with `../setupTests.ts` applied (jest-dom matchers,
   'Offline'` (the orchestrator's status only) and `sessionId`. Renders a
   pulsing green dot when Online, red when Offline, and shows the session ID in
   monospace.
+- `ChatHeader.test.tsx` — tests for the above.
 - `MessageList.tsx` — renders the conversation. Behaviors to preserve:
   - Empty state: when there are no messages, shows three suggested-query pill
     buttons ("HR Directory", "Weather Forecast", "System Status") that call
@@ -68,10 +71,12 @@ test. Tests run in jsdom with `../setupTests.ts` applied (jest-dom matchers,
 - `WeatherWidget.tsx` — "generative UI" component: renders a structured
   `weather_forecast` payload (produced by the weather A2A agent and forwarded
   through the orchestrator as `metadata.structured_data`) as a rich card
-  instead of plain text. Expects fields `city`, `temp_f`, `temp_c`,
-  `description`, `humidity`, `wind_speed` (most optional). Uses lucide-react
-  icons. If you add new structured payload types, follow this pattern and add
-  a new `data.type` branch in MessageList.
+  instead of plain text. Its prop is typed via the shared `WeatherForecastData`
+  from `../types.ts` (the single source of the payload contract) — fields
+  `city`, `temp_f`, `temp_c`, `description`, `humidity`, `wind_speed` (most
+  optional). Uses lucide-react icons. If you add new structured payload types,
+  add the shape to `../types.ts`, follow this pattern, and add a new
+  `data.type` branch in MessageList.
 
 ## Subdirectories
 

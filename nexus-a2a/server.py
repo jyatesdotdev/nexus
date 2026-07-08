@@ -250,19 +250,13 @@ class WeatherAgentExecutor(AgentExecutor):
             return
 
         try:
-            # Send an initial "thinking" message
-            thinking_msg = Message(
-                message_id=str(uuid.uuid4()),
-                role=Role.agent,
-                parts=[TextPart(text=f"*(Authenticated as {identity.user_id})* Fetching weather data for **{city}** from wttr.in...\n")],  # type: ignore[list-item]
-            )
-            await event_queue.enqueue_event(
-                TaskStatusUpdateEvent(
-                    task_id=context.task_id or "",
-                    context_id=context.context_id or "",
-                    final=False,
-                    status=TaskStatus(state=TaskState.working, message=thinking_msg),
-                )
+            # Send an initial "thinking" message via the shared helper (same
+            # two-phase TaskStatusUpdateEvent the clarification paths use).
+            await self._enqueue_status(
+                context,
+                event_queue,
+                final=False,
+                text=f"*(Authenticated as {identity.user_id})* Fetching weather data for **{city}** from wttr.in...\n",
             )
 
             # Fetch data using our helper

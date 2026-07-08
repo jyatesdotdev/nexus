@@ -7,6 +7,21 @@ import { SystemStatusGrid } from './components/SystemStatusGrid'
 import { Card } from './components/ui'
 
 /**
+ * EDUCATIONAL NOTE: Module-level constants (single source of truth)
+ * API_BASE_URL is read once — Vite statically inlines import.meta.env at build time,
+ * so hoisting is free. OFFLINE_STATUS is the all-services-down snapshot used both as the
+ * initial state and as the health-poll failure fallback, so its shape lives in one place.
+ */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const OFFLINE_STATUS: ServiceStatus = {
+  orchestrator: 'Offline',
+  mcp_server: 'Offline',
+  mcp_db: 'Offline',
+  a2a_agent: 'Offline',
+  a2a_api: 'Offline',
+}
+
+/**
  * EDUCATIONAL NOTE: Root Frontend Orchestrator
  * WHY: Manages the global state of the chat session, connectivity, and real-time streaming logic.
  * HOW: Uses React hooks (useState, useEffect) to coordinate between the Orchestrator backend
@@ -28,13 +43,7 @@ export default function App() {
    */
   const [sessionId] = useState(() => `session_${Math.random().toString(36).substring(7)}`)
   
-  const [status, setStatus] = useState<ServiceStatus>({
-    orchestrator: 'Offline',
-    mcp_server: 'Offline',
-    mcp_db: 'Offline',
-    a2a_agent: 'Offline',
-    a2a_api: 'Offline'
-  })
+  const [status, setStatus] = useState<ServiceStatus>(OFFLINE_STATUS)
   
   /**
    * EDUCATIONAL NOTE: DOM References
@@ -63,9 +72,7 @@ export default function App() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        // import.meta.env: How Vite accesses environment variables.
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-        const response = await fetch(`${baseUrl}/system-status`)
+        const response = await fetch(`${API_BASE_URL}/system-status`)
         if (response.ok) {
           const data = await response.json()
           setStatus(data)
@@ -73,13 +80,7 @@ export default function App() {
           throw new Error('Failed to fetch status')
         }
       } catch {
-        setStatus({
-          orchestrator: 'Offline',
-          mcp_server: 'Offline',
-          mcp_db: 'Offline',
-          a2a_agent: 'Offline',
-          a2a_api: 'Offline'
-        })
+        setStatus(OFFLINE_STATUS)
       }
     }
 
@@ -100,8 +101,7 @@ export default function App() {
   const sendRequest = async (body: Record<string, unknown>) => {
     setIsLoading(true)
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      const response = await fetch(`${baseUrl}/run_sse`, {
+      const response = await fetch(`${API_BASE_URL}/run_sse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

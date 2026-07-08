@@ -78,6 +78,7 @@ type-check:
 	cd ../nexus-orchestrator && uv run --no-sync mypy .
 	cd ../nexus-mcp && uv run --no-sync mypy .
 	cd ../nexus-a2a && uv run --no-sync mypy .
+	cd ../nexus-common && uv run --no-sync mypy .
 	cd ../nexus-ui && npm run type-check
 
 chat:

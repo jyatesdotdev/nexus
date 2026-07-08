@@ -1,5 +1,8 @@
 # Changelog - Nexus Directory (MCP)
 
+## [Refinement] - 2026-07-07
+- **Named HOST/PORT constants:** `"0.0.0.0"`/`8000` were hardcoded (with duplicate `# noqa: S104`) at both the FastMCP construction and the `__main__` uvicorn call. Hoisted to module-level `HOST`/`PORT` constants (single `noqa`), so the bind address has one source of truth. Docs: corrected the `search_directory` bullet (`icontains`, case-insensitive department) and the test count (12).
+
 ## [Bugfix] - 2026-07-04
 - **Case-insensitive search:** `search_directory` matched department exactly and name case-sensitively, so LLM-generated arguments like `"engineering"` nondeterministically returned "No employees found" in live demos. Department now compares lowercased and name uses `icontains`; regression test added.
 

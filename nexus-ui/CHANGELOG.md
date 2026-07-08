@@ -1,5 +1,9 @@
 # Changelog
 
+## [Refinement] - 2026-07-07
+- **Added missing `type-check` script:** `package.json` had no `type-check` script, so `make type-check`'s `npm run type-check` step failed. Added `"type-check": "tsc -b"` (matches the build's type-check half). - Nexus UI
+- **De-duplicated App.tsx:** hoisted `API_BASE_URL` and the all-`Offline` `OFFLINE_STATUS` snapshot to module-level constants (each was written verbatim twice), and `WeatherWidget` now reuses the shared `WeatherForecastData` type from `types.ts` instead of a field-for-field local copy. Behavior-preserving; 44 tests green. - Nexus UI
+
 ## [Branding] - 2026-07-05
 - **Nexus favicon:** Replaced the leftover template lightning-bolt with a hand-authored Nexus mark — the letter N drawn as a network graph (hub node at the crossing, indigo palette matching the app, one emerald "healthy agent" satellite). 9.3K of blur filters down to 860 bytes. - Nexus UI
 

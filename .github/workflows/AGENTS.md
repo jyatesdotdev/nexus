@@ -1,6 +1,6 @@
 # .github/workflows
 
-CI for the Nexus monorepo (dormant until the repo has a GitHub remote).
+CI for the Nexus monorepo.
 
 ## Files at this level
 

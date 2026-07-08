@@ -1,5 +1,8 @@
 # Changelog - Nexus Weather (A2A)
 
+## [Refinement] - 2026-07-07
+- **DRY the success-path "thinking" event:** the happy path reconstructed the initial `TaskStatusUpdateEvent` inline, byte-for-byte identical to what the `_enqueue_status` helper (already used on the clarification paths) produces. Routed it through the helper; behavior-preserving (tests unchanged, 8 pass). AGENTS.md's two-event description updated to name which paths use the helper vs the inline `metadata=`-carrying final event.
+
 ## [Bugfix] - 2026-07-04
 - **Never report weather for non-locations:** Live incident: after an HR question, "What's the weather like?" (no location) was delegated with "in the engineering department" spliced in by the orchestrator; `extract_city` grabbed it and wttr.in fuzzy-geocoded the nonsense into a confident forecast. Two layers of defense added:
   - `extract_city` now returns `Optional[str]` — no more `"London"` fallback. Candidates are sanitized (trailing temporal words, leading articles) and rejected when they contain obvious non-place words (department/team/office/morning/...); `None` makes the executor ask for a specific location (two-phase streaming contract preserved: thinking update, then a final clarification, no wttr.in call).

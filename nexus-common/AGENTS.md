@@ -23,8 +23,9 @@ is part of the single workspace-root git repository.
   hatchling's editable installs use a plain `.pth` path that mypy can follow, which the
   `py.typed` marker needs). Distribution `nexus-common`, version 0.1.0, requires
   Python >= 3.14 (matching the services and Dockerfiles). Dependencies are OpenTelemetry
-  (API, SDK, OTLP exporter, Prometheus exporter, httpx/FastAPI/Starlette instrumentation)
-  and `prometheus_client`. Note that `fastapi`, `starlette`, `redis`, etc. are
+  (API, SDK, OTLP exporter, httpx/FastAPI/Starlette instrumentation) and
+  `prometheus_client` (used directly for the `/metrics` endpoint — no OTel Prometheus
+  exporter). Note that `fastapi`, `starlette`, `redis`, etc. are
   deliberately NOT dependencies: the library imports them lazily inside functions and
   assumes the consuming service already has whichever framework it uses. Do not add heavy
   framework dependencies here. Also carries ruff (py314) and mypy strict config; both run

@@ -9,7 +9,9 @@ Dashboard JSON definitions, auto-loaded by the file provider in
 - `nexus-overview.json` — service health/traffic overview built on the Prometheus
   datasource; panels query the `nexus_http_requests_total` /
   `nexus_http_request_duration_seconds` metrics that every service emits via
-  nexus-common (labels: method, endpoint, status, service).
+  nexus-common. Labels: `method`, `endpoint`, `service` on both metrics; the
+  `nexus_http_requests_total` counter additionally carries a `status` label (the
+  latency histogram does not — grouping a latency panel by `status` returns nothing).
 - `tempo-health.json` — trace-oriented dashboard against the Tempo datasource.
 
 ## Caution

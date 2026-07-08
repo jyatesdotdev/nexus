@@ -7,11 +7,19 @@ from sqlmodel import Session, col, func, select
 
 from database import User, engine, init_db
 
+# EDUCATIONAL NOTE: Single source of truth for the bind address within this module.
+# HOST/PORT are referenced by both the FastMCP app and the __main__ uvicorn.run call, so
+# a maintainer changing the port edits one place, not two. S104 (bind-all-interfaces) is
+# acknowledged once here: it's intentional in a containerized lab where the container
+# network namespace is the isolation boundary.
+HOST = "0.0.0.0"  # noqa: S104
+PORT = 8000
+
 # Initialize FastMCP server
 # HOW: FastMCP is a high-level framework for building MCP (Model Context Protocol) servers.
 # EDUCATIONAL NOTE: It abstracts away the low-level JSON-RPC communication, allowing you to
 # focus on the actual tools and resources you want to expose to an AI agent.
-mcp = FastMCP("HR Directory Server", host="0.0.0.0", port=8000)  # noqa: S104
+mcp = FastMCP("HR Directory Server", host=HOST, port=PORT)
 
 # ==============================================================================
 # EDUCATIONAL NOTE: Startup Initialization
@@ -130,4 +138,4 @@ def get_system_status() -> str:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104
+    uvicorn.run(app, host=HOST, port=PORT)

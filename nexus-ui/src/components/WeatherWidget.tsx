@@ -1,4 +1,5 @@
 import { Cloud, Droplets, Wind, Thermometer } from 'lucide-react'
+import type { WeatherForecastData } from '../types'
 
 /**
  * EDUCATIONAL NOTE: Generative UI (Structured Components)
@@ -6,20 +7,13 @@ import { Cloud, Droplets, Wind, Thermometer } from 'lucide-react'
  *      the agent to return a specific data schema that the frontend
  *      intercepts to render a bespoke, interactive, and beautiful component.
  * HOW: This component takes a raw 'weather_forecast' object and maps it
- *      to a rich visual layout using Tailwind CSS and Lucide icons.
+ *      to a rich visual layout using Tailwind CSS and Lucide icons. It reuses
+ *      the shared WeatherForecastData shape from types.ts (the single source
+ *      of the payload contract) rather than redeclaring the fields here.
  */
 
-interface WeatherData {
-  city: string
-  temp_f?: string | number
-  temp_c?: string | number
-  description?: string
-  humidity?: string | number
-  wind_speed?: string | number
-}
-
 interface WeatherWidgetProps {
-  data: WeatherData
+  data: WeatherForecastData
 }
 
 export function WeatherWidget({ data }: WeatherWidgetProps) {

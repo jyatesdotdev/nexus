@@ -1,5 +1,9 @@
 # Changelog
 
+## [Refinement] - 2026-07-07
+- **`make type-check` covers nexus-common:** the `lint` target ran ruff over all four Python projects but `type-check` ran mypy over only three, silently omitting nexus-common (which passes strict mypy and ships `py.typed`). Added it for symmetry.
+- **Docs accuracy (AGENTS.md):** the `clean` description still claimed a machine-wide `docker system prune` (removed 2026-07-05); rewritten to the scoped reality. Documented the overridable `ORCHESTRATOR_HOST_PORT` / `FRONTEND_HOST_PORT` on the service entries and the "after make up" URLs.
+
 ## [Standards] - 2026-07-05
 - **Semgrep educational-note rule actually enforces now:** the old zero-width `\A` + `pattern-not-regex` construction silently matched nothing on older engines and mis-fired on newer ones (only honoring notes on line 1). Rewritten as a version-stable whole-file DOTALL lookahead; co-located UI test files excluded to match the python `tests/` exemption; include patterns unanchored per Semgrepignore v2. The working rule surfaced 19 files that had never received a note — all now documented.
 
